@@ -1,0 +1,76 @@
+tyForth
+
+tyForth is a strongly typed Forth.  Objects on the stack maintain type
+information.  A single stack element may be a string (or, specifically) a
+reference to a string.  The strong object maintains its length and buffer
+pointer.
+
+Strings, numbers (implemented as doubles because floating point processors
+are so fast these days it doesn't make sense to be limited by ints), tables
+(a Lua-esque data structure that is indexable like an array -or-
+(simultaneously) a string like Perl's hashes), functions, and Forth words
+are first class citizens in this Forth.
+
+The Forth is intended to be used within a larger environment.  My first
+deployment for this Forth is in an Arm simulator.  It will be used as the
+CLI for the simulator along with enough horse power to debug the target
+machine code.
+
+I chose the course of building a Forth with my own strings, numbers, and tables.  I've thought a lot about the structure of this system and I'm making great progress.  See the build and output below.
+
+Right now I have all of the machinery for the underlying objects upon which everything is built.  Numbers, strings, tables, words, and functions are built on top of the core object.  Here's the object data structure:
+
+struct fobj_s {
+    int                  type;
+    int                  refcount;
+    union {
+        fnum_t           num;
+        fstr_t           str;
+        ffunc_t          func;
+        ftable_t         table;
+        fword_t          word;
+    } u;
+};
+
+The code is a little longer in path than you might want, but the flexibility is great.
+
+First, all variables are objects and hold references to values which are objects.  The variable code field points to a routine that pushes the reference to the variable on the stack.  Then, fetch will obtain the value of the variable.  Constants, on the other hand, just push the value.  When a variable object is pushed on the stack store will change its value. For example:
+
+       " hello world" var str
+       str @ .
+
+Everything is normal: " xyz" pushes a string object on the stack.  var looks forward to the token str which it creates in the dictionary and the sets it value to the top most stack element, which is a string object.  str @ will push onto the stack a reference to the string's value.  Dot prints it calling the object's print routine.
+
+Here's the fobj_add() routine:
+
+void fobj_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+{
+    felem_init(f, dest, NULL);
+    op_table[op1->obj->type].add(f, dest, op1, op2);
+}    
+
+As you can see, it calls through the operator table to call the right routine; it's like message sending where op1 is the target object.  The felem_t is a stack element and contains a reference to an object and index information:
+
+#define FINDEX_NONE              0
+#define FINDEX_NUM               1
+#define FINDEX_STR               2
+
+struct findex_s {
+    int                  type;
+    union {
+        fnum_t           num;
+        fobj_t          *str;  // Must be a String obj
+    } i;
+};
+
+struct felem_s {
+    fobj_t              *obj;
+    findex_t             index;
+};
+
+The indexing is used for indexing tables and strings.  For example, if you wrote:
+    " Hello world" var str
+    str 5 + @ .
+The machine would pick out the 6th character from the string, the blank, and print it's decimal number, 32.
+
+NOTE: I haven't written the parser yet.  Just the underlying object handling code.  The compiler is pretty simple.
