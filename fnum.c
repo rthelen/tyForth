@@ -25,29 +25,29 @@ void fnum_free(fenv_t *f, fobj_t *p)
     /* Nothing for a number */
 }
 
-void fnum_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+int fnum_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
 {
     ASSERT(op1->obj->type == FOBJ_NUM);
-    ASSERT(op2->obj->type > 0);
-    fassert(f, op2->obj->type == FOBJ_NUM, 1, "%s %s + not supported", 
-            op_table[op1->obj->type].type_name,
-            op_table[op2->obj->type].type_name);
+    switch (op2->obj->type) {
+    case FOBJ_NUM:
+        dest->obj = fnum_new(f, op1->obj->u.num.n + op2->obj->u.num.n);
+        return 1;
 
-    printf("Number Add\n");
-
-    dest->obj = fnum_new(f, op1->obj->u.num.n + op2->obj->u.num.n);
+    default:
+        return 0;
+    }
 }
 
-void fnum_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+int fnum_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
 {
     ASSERT(op1->obj->type == FOBJ_NUM);
-    ASSERT(op2->obj->type > 0);
-    fassert(f, op2->obj->type == FOBJ_NUM, 1, "%s %s - not supported", 
-            op_table[op1->obj->type].type_name,
-            op_table[op2->obj->type].type_name);
+    switch (op2->obj->type) {
+    case FOBJ_NUM:
+        dest->obj = fnum_new(f, op1->obj->u.num.n - op2->obj->u.num.n);
+        return 1;
 
-    printf("Number Sub\n");
-
-    dest->obj = fnum_new(f, op1->obj->u.num.n - op2->obj->u.num.n);
+    default:
+        return 0;
+    }
 }
 

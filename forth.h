@@ -28,14 +28,15 @@ void FASSERT(int x, const char *err, const char *file, int line);
 
 #define FOBJ_NUM		1
 #define FOBJ_STR		2
-#define FOBJ_FUNC		3
-#define FOBJ_TABLE		4
+#define FOBJ_TABLE		3
+#define FOBJ_FUNC		4
 #define FOBJ_WORD		5
 #define FOBJ_NUM_TYPES	6
 
 typedef struct fobj_s fobj_t;
 typedef struct felem_s felem_t;
 typedef struct fstack_s fstack_t;
+typedef struct ftable_s ftable_t;
 
 typedef struct fenv_s {
     int x;
@@ -43,8 +44,9 @@ typedef struct fenv_s {
 
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
 
-void felem_init(fenv_t *f, felem_t *p, fobj_t *obj);
+void felem_init(fenv_t *f, felem_t *p, felem_t *op1);
 void felem_free(fenv_t *f, felem_t *p);
+void felem_clear_index(fenv_t *f, felem_t *p, int new_type);
 
 fstack_t *fstack_new(fenv_t *f, const char *name);
 void      fstack_free(fenv_t *f, fstack_t *s);
@@ -62,14 +64,20 @@ void    fobj_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
 fobj_t *fnum_new(fenv_t *f, double n);
 void    fnum_print(fenv_t *f, fobj_t *p);
 void    fnum_free(fenv_t *f, fobj_t *p);
-void    fnum_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
-void    fnum_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+int     fnum_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+int     fnum_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
 
 fobj_t *fstr_new(fenv_t *f, const char *str);
 void    fstr_print(fenv_t *f, fobj_t *p);
 void    fstr_free(fenv_t *f, fobj_t *p);
-void    fstr_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
-void    fstr_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+int     fstr_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+int     fstr_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+
+fobj_t *ftable_new(fenv_t *f, const ftable_t *table);
+void    ftable_print(fenv_t *f, fobj_t *p);
+void    ftable_free(fenv_t *f, fobj_t *p);
+int     ftable_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+int     ftable_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
 
 
 #endif /* __FORTH_H__ */

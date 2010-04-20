@@ -11,7 +11,7 @@
 typedef struct fnum_s fnum_t;
 typedef struct fstr_s fstr_t;
 typedef struct ffunc_s ffunc_t;
-typedef struct ftable_s ftable_t;
+//typedef struct ftable_s ftable_t;
 typedef struct fword_s fword_t;
 typedef struct fcell_s fcell_t;
 typedef struct fbounds_s fbounds_t;
@@ -40,7 +40,7 @@ struct ffunc_s {
 };
 
 struct ftable_s {
-    int			 i_start, i_last;
+    int			 i_start, i_limit;
     fobj_t		**array;
 
     int			 num_kv_pairs;
@@ -111,8 +111,9 @@ struct foptable_s {
     const char *type_name;
     void (*free)(fenv_t *f, fobj_t *p);
     void (*print)(fenv_t *f, fobj_t *p);
-    void (*add)(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
-    void (*sub)(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+
+    int  (*add)(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+    int  (*sub)(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
 };
 
 extern const foptable_t op_table[];

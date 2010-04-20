@@ -35,15 +35,44 @@ void felem_free(fenv_t *f, felem_t *p)
  * Is this routine useful or just a nuisance?
  */
 
-void felem_init(fenv_t *f, felem_t *p, fobj_t *obj)
+void felem_init(fenv_t *f, felem_t *p, felem_t *op1)
 {
-    if (obj) {
-        fobj_retain(f, obj);
+    if (!op1) {
+        p->obj = NULL;
+        p->index.type = FINDEX_NONE;
+        return;
     }
 
-    p->obj = obj;
-    p->index.type = FINDEX_NONE;
+    fobj_retain(f, op1->obj);
+    p->obj = op1->obj;
 
+    p->index.type = op1->index.type;
+    if (op1->index.type == FINDEX_STR) {
+        fobj_retain(f, op1->index.i.str);
+    }
+    switch (op1->index.type) {
+    case FINDEX_NUM:
+    case FINDEX_STR:
+        p->index.i = op1->index.i;
+        break;
+    default:
+        p->index.i.num.n = 0;
+        break;
+    }
+}
+
+void felem_clear_index(fenv_t *f, felem_t *p, int new_type)
+{
+    if (p->index.type == FINDEX_STR) {
+        fobj_release(f, p->index.i.str);
+        p->index.type = FINDEX_NONE;
+    }
+
+    if (p->index.type == FINDEX_NONE) {
+        p->index.i.num.n = 0;
+    }
+
+    p->index.type = new_type;
 }
 
 void fstack_free(fenv_t *f, fstack_t *s)

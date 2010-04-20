@@ -54,7 +54,7 @@ static void fstr_concatenate(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op
 
 static void fstr_index(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
 {
-    felem_init(f, dest, op1->obj);
+    felem_init(f, dest, op1);
 
     ASSERT(dest->index.type == FINDEX_NONE ||
            dest->index.type == FINDEX_NUM);
@@ -71,29 +71,25 @@ static void fstr_compare(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
     int r = strcmp(op1->obj->u.str.buf, op2->obj->u.str.buf);
     fobj_t *obj = fnum_new(f, r);
 
-    felem_init(f, dest, obj);
+    felem_init(f, dest, NULL);
+    dest->obj = obj;
 }
 
-void fstr_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+int fstr_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
 {
     ASSERT(op1->obj->type == FOBJ_STR);
-
-    printf("String Add\n");
 
     switch(op2->obj->type) {
     case FOBJ_STR:
         fstr_concatenate(f, dest, op1, op2);
-        break;
+        return 1;
 
     case FOBJ_NUM:
         fstr_index(f, dest, op1, op2);
-        break;
+        return 1;
 
     default:
-        fassert(f, FALSE, 1, "%s %s + not supported",
-                op_table[op1->obj->type].type_name,
-                op_table[op2->obj->type].type_name);
-        break;
+        return 0;
     }
 }
 
@@ -105,7 +101,7 @@ void fstr_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
  *    - Number: index into string
  */
 
-void fstr_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+int fstr_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
 {
     ASSERT(op1->obj->type == FOBJ_STR);
 
@@ -114,16 +110,13 @@ void fstr_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
     switch(op2->obj->type) {
     case FOBJ_STR:
         fstr_compare(f, dest, op1, op2);
-        break;
+        return 1;
 
     case FOBJ_NUM:
         fstr_index(f, dest, op1, op2);
-        break;
+        return 1;
 
     default:
-        fassert(f, FALSE, 1, "%s %s + not supported",
-                op_table[op1->obj->type].type_name,
-                op_table[op2->obj->type].type_name);
-        break;
+        return 0;
     }
 }

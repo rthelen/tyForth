@@ -13,6 +13,7 @@ const foptable_t op_table[FOBJ_NUM_TYPES] = {
     { 0, 0, 0 }, // The zeroth entry is INVALID
     { "number", fnum_free, fnum_print, fnum_add, fnum_sub },
     { "string", fstr_free, fstr_print, fstr_add, fstr_sub },
+    { "table",  ftable_free, ftable_print, ftable_add, ftable_sub },
 };
 
 
@@ -71,6 +72,10 @@ void fobj_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
 void fobj_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
 {
     felem_init(f, dest, NULL);
-    op_table[op1->obj->type].sub(f, dest, op1, op2);
+    if (op_table[op1->obj->type].sub(f, dest, op1, op2) == 0) {
+        fassert(f, FALSE, 1, "%s %s + not supported",
+                op_table[op1->obj->type].type_name,
+                op_table[op2->obj->type].type_name);
+    }
 }    
 
