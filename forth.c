@@ -30,56 +30,117 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
     exit(-1);
 }
 
+#define PUSH(x)				ftable_push(f, stack, x)
+#define PUSHN(n)			PUSH(fnum_new(f, n))
+#define PUSHS(s)			PUSH(fstr_new(f, s))
+#define POP					ftable_pop(f, stack)
+#define RETAIN(x)			fobj_retain(f, x)
+#define RELEASE(x)			fobj_release(f, x)
+#define ADD(a, b)			fobj_add(f, a, b)
+#define SUB(a, b)			fobj_sub(f, a, b)
+#define STORE(a,i,d)		fobj_store(f, a, i, d)
+#define FETCH(a,i)			fobj_fetch(f, a, i)
+#define PRINT(x)			fobj_print(f, x)
+
+#define FADD				fadd(f, stack)
+#define FSUB				fsub(f, stack)
+#define FSTORE				fstore(f, stack)
+#define FFETCH				ffetch(f, stack)
+
 void fadd(fenv_t *f, fobj_t *stack)
 {
-    fobj_t *op2 = ftable_pop(f, stack);
-    fobj_t *op1 = ftable_pop(f, stack);
+    fobj_t *op2 = POP;
+    fobj_t *op1 = POP;
 
-    ftable_push(f, stack, fobj_add(f, op1, op2));
+    PUSH(ADD(op1, op2));
 
-    fobj_release(f, op1);
-    fobj_release(f, op2);
+    RELEASE(op1);
+    RELEASE(op2);
 }
 
 void fsub(fenv_t *f, fobj_t *stack)
 {
-    fobj_t *op2 = ftable_pop(f, stack);
-    fobj_t *op1 = ftable_pop(f, stack);
+    fobj_t *op2 = POP;
+    fobj_t *op1 = POP;
 
-    ftable_push(f, stack, fobj_sub(f, op1, op2));
+    PUSH(SUB(op1, op2));
 
-    fobj_release(f, op1);
-    fobj_release(f, op2);
+    RELEASE(op1);
+    RELEASE(op2);
+}
+
+void ffetch(fenv_t *f, fobj_t *stack)
+{
+    fobj_t *addr = POP;
+    fobj_t *index = NULL;
+    if (fobj_is_index(f, addr)) {
+        index = addr;
+        addr = POP;
+    }
+
+    PUSH(fobj_fetch(f, addr, index));
+
+    RELEASE(addr);
+    RELEASE(index);
+}
+
+void fstore(fenv_t *f, fobj_t *stack)
+{
+    fobj_t *addr = POP;
+    fobj_t *index = NULL;
+    if (fobj_is_index(f, addr)) {
+        index = addr;
+        addr = POP;
+    }
+    fobj_t *data = POP;
+
+    fobj_store(f, addr, index, data);
+
+    RELEASE(addr);
+    RELEASE(index);
+    RELEASE(data);
 }
 
 int main(int argc, char *argv[])
 {
     fenv_t *f = NULL;
     fobj_t *r;
-    fobj_t *dstack = ftable_new(f, NULL);
+    fobj_t *stack = ftable_new(f, NULL);
 
-    ftable_push(f, dstack, fnum_new(f, 2));
-    ftable_push(f, dstack, fnum_new(f, 5));
-    ftable_push(f, dstack, fnum_new(f, 8));
+    /*
+     * Test arithmetic
+     */
 
-    fadd(f, dstack);
-    fsub(f, dstack);
+    PUSHN(2);
+    PUSHN(5);
+    PUSHN(8);
 
-    printf("Result = ");
-    r = ftable_pop(f, dstack);
-    fobj_print(f, r);
-    fobj_release(f, r);
-
-    ftable_push(f, dstack, fstr_new(f, "Hello"));
-    ftable_push(f, dstack, fstr_new(f, " world"));
-    fadd(f, dstack);
+    FADD;
+    FSUB;
 
     printf("Result = ");
-    r = ftable_pop(f, dstack);
-    fobj_print(f, r);
-    fobj_release(f, r);
+    r = POP;
+    PRINT(r);
+    RELEASE(r);
 
-    fobj_release(f, dstack);
+    /*
+     * Test strings
+     */
+
+    PUSHS("Hello");
+    PUSHS(" world");
+    FADD;
+
+    printf("Result = ");
+    r = POP;
+    PRINT(r);
+    RELEASE(r);
+
+    /*
+     * Test tables
+     */
+
+    RELEASE(stack);
 
     return 0;
 }

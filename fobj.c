@@ -30,7 +30,8 @@ fobj_t *fobj_new(fenv_t *f, int type)
 
 void fobj_release(fenv_t *f, fobj_t *p)
 {
-    ASSERT(p);
+    if (!p) return;
+
     ASSERT(p->type);
     ASSERT(p->refcount > 0);
 
@@ -90,3 +91,19 @@ fobj_t *fobj_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
     return op_table[addr->type].fetch(f, addr, index);
 }    
 
+void    fobj_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
+{
+    fassert(f, !!op_table[addr->type].store, 1, "%s ! not supported",
+            op_table[addr->type].type_name);
+
+    op_table[addr->type].store(f, addr, index, data);
+}
+
+int fobj_is_index(fenv_t *f, fobj_t *obj)
+{
+    if (obj && obj->type == FOBJ_INDEX) {
+        return 1;
+    } else {
+        return 0;
+    }
+}

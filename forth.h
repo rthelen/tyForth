@@ -31,7 +31,8 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_TABLE		3
 #define FOBJ_FUNC		4
 #define FOBJ_WORD		5
-#define FOBJ_NUM_TYPES	6
+#define FOBJ_INDEX		6
+#define FOBJ_NUM_TYPES	7
 
 typedef struct fobj_s fobj_t;
 typedef struct ftable_s ftable_t;
@@ -48,6 +49,9 @@ void    fobj_release(fenv_t *f, fobj_t *p);
 void    fobj_print(fenv_t *f, fobj_t *p);
 fobj_t *fobj_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fobj_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
+fobj_t *fobj_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
+void    fobj_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
+int     fobj_is_index(fenv_t *f, fobj_t *obj);
 
 fobj_t *fnum_new(fenv_t *f, double n);
 void    fnum_print(fenv_t *f, fobj_t *p);
