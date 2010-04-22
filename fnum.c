@@ -25,29 +25,16 @@ void fnum_free(fenv_t *f, fobj_t *p)
     /* Nothing for a number */
 }
 
-int fnum_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+fobj_t *fnum_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
-    ASSERT(op1->obj->type == FOBJ_NUM);
-    switch (op2->obj->type) {
-    case FOBJ_NUM:
-        dest->obj = fnum_new(f, op1->obj->u.num.n + op2->obj->u.num.n);
-        return 1;
-
-    default:
-        return 0;
-    }
+    ASSERT(op1->type == FOBJ_NUM);
+    fassert(f, op2->type == FOBJ_NUM, 1, "Wrong type");
+    return fnum_new(f, op1->u.num.n + op2->u.num.n);
 }
 
-int fnum_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+fobj_t *fnum_sub(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
-    ASSERT(op1->obj->type == FOBJ_NUM);
-    switch (op2->obj->type) {
-    case FOBJ_NUM:
-        dest->obj = fnum_new(f, op1->obj->u.num.n - op2->obj->u.num.n);
-        return 1;
-
-    default:
-        return 0;
-    }
+    ASSERT(op1->type == FOBJ_NUM);
+    fassert(f, op2->type == FOBJ_NUM, 1, "Wrong type");
+    return fnum_new(f, op1->u.num.n - op2->u.num.n);
 }
-

@@ -12,83 +12,51 @@ void ftable_print(fenv_t *f, fobj_t *p)
 {
     ASSERT(p->type == FOBJ_TABLE);
     ftable_t *t = &p->u.table;
-    fobj_t **array = t->array;
-    for (int i = t->i_start; i < t->i_limit; i++) {
+
+    for (int i = 0; i < t->num; i++) {
         printf("array[%d] = ", i);
-        fobj_print(f, *array++);
+        fobj_print(f, t->array[i]);
     }
 
-    fobj_t **keys, **vals;
-    keys = t->keys;
-    vals = t->vals;
-    for (int i = 0; i < t->num_kv_pairs; i++) {
-        fobj_print(f, *keys++);
+    for (int i = 0; i < t->num_kv; i++) {
+        fobj_print(f, t->keys[i]);
         printf(" = ");
-        fobj_print(f, *vals++);
+        fobj_print(f, t->vals[i]);
     }
 }
 
-
-void ftable_set_i_val(fenv_t *f, ftable_t *t, int i, fobj_t *val)
+static void ftable_grow_array(fenv_t *f, ftable_t *t, int n)
 {
-    fobj_retain(f, val);
-
-    if (i < t->i_start) {
-        int n = t->i_limit - i;
-        t->array = realloc(t->array, n * sizeof(fobj_t **));
-        n = t->i_start - i;
-        memmove(&t->array[n], &t->array[0], n * sizeof(fobj_t **));
-        bzero(&t->array[0], n * sizeof(fobj_t **));
-        t->i_start = i;
-        t->array[0] = val;
-    } else if (i >= t->i_limit) {
-        int n = t->i_limit + 1 - i;
-        t->array = realloc(t->array, n * sizeof(fobj_t **));
-        bzero(&t->array[t->i_limit], n * sizeof(fobj_t **));
-        t->i_limit = i + 1;
-        t->array[i] = val;
-    } else {
-        ASSERT(i >= t->i_start && i < t->i_limit);
-        if (t->array[i]) {
-            fobj_release(f, t->array[i]);
-        }
-        t->array[i] = val;
-    }
+    ASSERT(n > t->num);
+    t->array = realloc(t->array, n * sizeof(fobj_t **));
+    bzero(&t->array[t->num], (n - t->num) * sizeof(fobj_t **));
+    t->num = n;
 }
 
-static int ftable_key_lookup(fenv_t *f, ftable_t *t, fstr_t *s, fobj_t ***key, fobj_t ***val)
+static void ftable_add_key_val(fenv_t *f, ftable_t *t, fobj_t *key, fobj_t *val)
 {
-    for (int i = 0; i < t->num_kv_pairs; i++) {
-        ASSERT(t->keys[i]->type == FOBJ_STR);
-        if (strcmp(s->buf, t->keys[i]->u.str.buf) == 0) {
-            *key = &t->keys[i];
-            *val = &t->vals[i];
-            return 1;
-        }
-    }
-
-    return 0;
+    int n = t->num_kv + 1;
+    t->keys = realloc(t->keys, n * sizeof(fobj_t **));
+    t->vals = realloc(t->vals, n * sizeof(fobj_t **));
+    t->keys[t->num_kv] = fobj_retain(f, key);
+    t->vals[t->num_kv] = fobj_retain(f, val);
+    t->num_kv ++;
 }
 
-void ftable_set_key_val(fenv_t *f, ftable_t *t, fobj_t *key, fobj_t *val)
+static fobj_t **ftable_copy_array(fenv_t *f, int n, fobj_t **src_array)
 {
-    /* Remember: key's must be strings */
-    ASSERT(key->type == FOBJ_STR);
-    fobj_t **keyp, **valp;
-    if (ftable_key_lookup(f, t, &key->u.str, &keyp, &valp)) {
-        fobj_release(f, *valp);
-        fobj_retain(f, val);
-        *valp = val;
-    } else {
-        int i = t->num_kv_pairs;
-        t->num_kv_pairs += 1;
-        t->keys = realloc(t->keys, sizeof(fobj_t *) * t->num_kv_pairs);
-        t->vals = realloc(t->vals, sizeof(fobj_t *) * t->num_kv_pairs);
-        fobj_retain(f, key);
-        fobj_retain(f, val);
-        t->keys[i] = key;
-        t->vals[i] = val;
+    if (!n) {
+        return NULL;
     }
+
+    fobj_t **dest_array = malloc(sizeof(fobj_t **) * n);
+    fassert(f, !!dest_array, 1, "allocating a new table array");
+
+    for (int i = 0; i < n; i++) {
+        dest_array[i] = fobj_retain(f, src_array[i]);
+    }
+
+    return dest_array;
 }
 
 fobj_t *ftable_new(fenv_t *f, const ftable_t *t)
@@ -100,32 +68,17 @@ fobj_t *ftable_new(fenv_t *f, const ftable_t *t)
         /*
          * Copy table to the newly allocated table
          */
-        t2->i_start = t->i_start;
-        t2->i_limit = t->i_limit;
+        t2->num = t->num;
+        t2->array = ftable_copy_array(f, t->num, t->array);
 
-        int n = t2->i_limit - t2->i_start;
-        t2->array = malloc(sizeof(fobj_t **) * n);
-
-        for (int i = 0; i < t2->i_limit - t2->i_start; i++) {
-            t2->array[i] = t->array[i];
-            fobj_retain(f, t2->array[i]);
-        }
-
-        t2->num_kv_pairs = t->num_kv_pairs;
-        t2->keys = malloc(sizeof(fobj_t **) * t2->num_kv_pairs);
-        t2->vals = malloc(sizeof(fobj_t **) * t2->num_kv_pairs);
-        for (int i = 0; i < t2->num_kv_pairs; i++) {
-            t2->keys[i] = t->keys[i];
-            t2->vals[i] = t->keys[i];
-            fobj_retain(f, t2->keys[i]);
-            fobj_retain(f, t2->vals[i]);
-        }
+        t2->num_kv = t->num_kv;
+        t2->keys = ftable_copy_array(f, t->num_kv, t->keys);
+        t2->vals = ftable_copy_array(f, t->num_kv, t->vals);
     } else {
-        t2->i_start = 0;
-        t2->i_limit = 0;
+        t2->num = 0;
         t2->array = NULL;
 
-        t2->num_kv_pairs = 0;
+        t2->num_kv = 0;
         t2->keys = NULL;
         t2->vals = NULL;
     }
@@ -136,86 +89,197 @@ fobj_t *ftable_new(fenv_t *f, const ftable_t *t)
 void ftable_free(fenv_t *f, fobj_t *p)
 {
     ftable_t *t = &p->u.table;
-    fobj_t **array = t->array;
-    for (int i = t->i_start; i < t->i_limit; i++) {
-        fobj_release(f, *array++);
+
+    for (int i = 0; i < t->num; i++) {
+        fobj_release(f, t->array[i]);
     }
 
-    fobj_t **keys, **vals;
-    keys = t->keys;
-    vals = t->vals;
-    for (int i = 0; i < t->num_kv_pairs; i++) {
-        fobj_release(f, *keys++);
-        fobj_release(f, *vals++);
+    if (t->array) {
+        free(t->array);
+    }
+
+    for (int i = 0; i < t->num_kv; i++) {
+        fobj_release(f, t->keys[i]);
+        fobj_release(f, t->vals[i]);
+    }
+
+    if (t->keys) {
+        free(t->keys);
+        free(t->vals);
     }
 }
 
-/*
- * Currently the keys are in as-added order.  That means on average lookups
- * consume time propotional to the number of keys present.  :-(
- */
-
-/*
- * ftable_add()
- *
- * Supported operand types (for op2):
- *    - String: concatenate the two strings
- *    - Number: index into string
- */
-
-/*
- * ftable_concatenate()
- *
- * Add all the array elements of op2 to the end of the array elements of
- * op1.  Then, copy all of the keys and values from op2 to op1.  But, use
- * the ftable_set_key_val() routine so that any duplicate entries are
- * properly replaced.  Thus, to avoid leaks.
- */
-void ftable_concatenate(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+static fobj_t **ftable_num_index(fenv_t *f, ftable_t *t, fnumber_t n)
 {
-    int ftable_implemented = 0;
-    ASSERT(ftable_implemented);
+    if (n < 0) return NULL;
+    if (n >= t->num) return NULL;
+
+    return t->array + (int) n;
 }
 
-int ftable_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+static fobj_t **ftable_key_index(fenv_t *f, ftable_t *t, fobj_t *key)
 {
-    ASSERT(op1->obj->type == FOBJ_TABLE);
+    for (int i = 0; i < t->num_kv; i++) {
+        ASSERT(t->keys[i]->type == FOBJ_STR);
+        if (strcmp(key->u.str.buf, t->keys[i]->u.str.buf) == 0) {
+            return &t->vals[i];
+        }
+    }
 
-    switch(op2->obj->type) {
-    case FOBJ_STR:
-        felem_init(f, dest, op1);
-        felem_clear_index(f, dest, FINDEX_STR);
-        fobj_retain(f, op2->obj);
-        dest->index.i.str = op2->obj;
-        return 1;
+    return NULL;
+}
 
+/***********************************
+ *
+ * ftable_fetch()
+ *
+ ***********************************/
+
+static fobj_t *ftable_obj_fetch(fenv_t *f, fobj_t **p)
+{
+    if (!p) {
+        return NULL;
+    }
+
+    return fobj_retain(f, *p);
+}
+
+static fobj_t *ftable_num_fetch(fenv_t *f, ftable_t *t, fnumber_t n)
+{
+    return ftable_obj_fetch(f, ftable_num_index(f, t, n));
+}
+
+static fobj_t *ftable_key_fetch(fenv_t *f, ftable_t *t, fobj_t *key)
+{
+    return ftable_obj_fetch(f, ftable_key_index(f, t, key));
+}
+
+fobj_t *ftable_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
+{
+    if (index) {
+        switch(index->type) {
+        case FOBJ_NUM:
+            return ftable_num_fetch(f, &addr->u.table, index->u.num.n);
+
+        case FOBJ_STR:
+            return ftable_key_fetch(f, &addr->u.table, index);
+
+        default:
+            fassert(f, 0, 1, "An indexed table store must be indexed by either a NUM or STRING");
+            return NULL;
+        }
+    } else {
+        /*
+         * Return the number of integer elements in the table.  I.e., it's
+         * the array size if the table is used as an array.
+         */
+        return fnum_new(f, addr->u.table.num);
+    }
+}
+
+/***********************************
+ *
+ * ftable_store()
+ *
+ ***********************************/
+
+static void ftable_obj_store(fenv_t *f, fobj_t **valp, fobj_t *data)
+{
+    ASSERT(valp);
+
+    if (*valp) {
+        fobj_release(f, *valp);
+    }
+
+    *valp = fobj_retain(f, data);
+}
+
+static void ftable_num_store(fenv_t *f, ftable_t *t, fnumber_t n, fobj_t *data)
+{
+    fobj_t **valp = ftable_num_index(f, t, n);
+
+    if (!valp) {
+        ftable_grow_array(f, t, n+1);
+        valp = ftable_num_index(f, t, n);
+        ASSERT(valp);
+    }
+
+    ftable_obj_store(f, valp, data);
+}
+
+static void ftable_key_store(fenv_t *f, ftable_t *t, fobj_t *key, fobj_t *data)
+{
+    fobj_t **valp = ftable_key_index(f, t, key);
+
+    if (valp) {
+        ftable_obj_store(f, valp, data);
+    } else {
+        ftable_add_key_val(f, t, key, data);
+    }
+}
+
+void ftable_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
+{
+    fassert(f, !!index, 1, "table store must be indexed");
+
+    switch(index->type) {
     case FOBJ_NUM:
-        felem_init(f, dest, op1);
-        felem_clear_index(f, dest, FINDEX_NUM);
-        dest->index.i.num.n += op2->obj->u.num.n;
-        return 1;
+        ftable_num_store(f, &addr->u.table, index->u.num.n, data);
+
+    case FOBJ_STR:
+        ftable_key_store(f, &addr->u.table, index, data);
 
     default:
-        return 0;
+        fassert(f, 0, 1, "table store must be indexed by NUM or STRING");
     }
 }
 
-/*
- * ftable_sub()
+/********************************************
  *
- * Supported operand types (for op2):
- *    - String: compare the two strings (leave a number)
- *    - Number: index into string
+ * push and pop operations on a table
+ *
  */
 
-int ftable_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+static fobj_t *ftable_get_sp(fenv_t *f, fobj_t *stack)
 {
-    ASSERT(op1->obj->type == FOBJ_TABLE);
-
-    printf("String Sub\n");
-
-    switch(op2->obj->type) {
-    default:
-        return 0;
+    ftable_t *t = &stack->u.table;
+    fobj_t *sp_str = fstr_new(f, "sp");
+    fobj_t *sp = ftable_key_fetch(f, t, sp_str);
+    if (!sp) {
+        sp = fnum_new(f, 0);
+        ftable_key_store(f, t, sp_str, sp);
     }
+    fobj_release(f, sp_str);
+    return sp;
+}
+
+static void ftable_set_sp(fenv_t *f, fobj_t *stack, fobj_t *sp)
+{
+    ftable_t *t = &stack->u.table;
+    fobj_t *sp_str = fstr_new(f, "sp");
+    ftable_key_store(f, t, sp_str, sp);
+    fobj_release(f, sp_str);
+}
+
+
+void ftable_push(fenv_t *f, fobj_t *stack, fobj_t *data)
+{
+    fassert(f, stack->type == FOBJ_TABLE, 1, "Wrong type");
+    ftable_t *t = &stack->u.table;
+    fobj_t *sp = ftable_get_sp(f, stack);
+    ftable_num_store(f, t, sp->u.num.n++, data);
+    ftable_set_sp(f, stack, sp);
+}
+
+fobj_t *ftable_pop(fenv_t *f, fobj_t *stack)
+{
+    fassert(f, stack->type == FOBJ_TABLE, 1, "Wrong type");
+    ftable_t *t = &stack->u.table;
+    fassert(f, t->num > 0, 1, "stack underflow");
+
+    fobj_t *sp = ftable_get_sp(f, stack);
+    fobj_t *result = ftable_num_fetch(f, t, --sp->u.num.n);
+    ftable_set_sp(f, stack, sp);
+
+    return result;
 }

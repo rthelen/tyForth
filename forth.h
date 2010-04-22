@@ -34,8 +34,6 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_NUM_TYPES	6
 
 typedef struct fobj_s fobj_t;
-typedef struct felem_s felem_t;
-typedef struct fstack_s fstack_t;
 typedef struct ftable_s ftable_t;
 
 typedef struct fenv_s {
@@ -44,40 +42,36 @@ typedef struct fenv_s {
 
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
 
-void felem_init(fenv_t *f, felem_t *p, felem_t *op1);
-void felem_free(fenv_t *f, felem_t *p);
-void felem_clear_index(fenv_t *f, felem_t *p, int new_type);
-
-fstack_t *fstack_new(fenv_t *f, const char *name);
-void      fstack_free(fenv_t *f, fstack_t *s);
-felem_t  *fstack_pop(fenv_t *f, fstack_t *s, felem_t *p);
-void      fstack_push(fenv_t *f, fstack_t *s, felem_t *p);
-void      fstack_push_obj(fenv_t *f, fstack_t *s, fobj_t *p);
-
 fobj_t *fobj_new(fenv_t *f, int type);
-void    fobj_retain(fenv_t *f, fobj_t *p);
+fobj_t *fobj_retain(fenv_t *f, fobj_t *p);
 void    fobj_release(fenv_t *f, fobj_t *p);
 void    fobj_print(fenv_t *f, fobj_t *p);
-void    fobj_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
-void    fobj_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+fobj_t *fobj_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
+fobj_t *fobj_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
 
 fobj_t *fnum_new(fenv_t *f, double n);
 void    fnum_print(fenv_t *f, fobj_t *p);
 void    fnum_free(fenv_t *f, fobj_t *p);
-int     fnum_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
-int     fnum_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+fobj_t *fnum_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
+fobj_t *fnum_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
 
 fobj_t *fstr_new(fenv_t *f, const char *str);
 void    fstr_print(fenv_t *f, fobj_t *p);
 void    fstr_free(fenv_t *f, fobj_t *p);
-int     fstr_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
-int     fstr_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+fobj_t *fstr_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
+fobj_t *fstr_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
+fobj_t *fstr_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
 fobj_t *ftable_new(fenv_t *f, const ftable_t *table);
 void    ftable_print(fenv_t *f, fobj_t *p);
 void    ftable_free(fenv_t *f, fobj_t *p);
-int     ftable_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
-int     ftable_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2);
+fobj_t *ftable_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
+fobj_t *ftable_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
+fobj_t *ftable_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
+void    ftable_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
+void    ftable_push(fenv_t *f, fobj_t *stack, fobj_t *data);
+fobj_t *ftable_pop(fenv_t *f, fobj_t *stack);
+
 
 
 #endif /* __FORTH_H__ */

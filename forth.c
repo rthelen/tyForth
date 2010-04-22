@@ -30,64 +30,56 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
     exit(-1);
 }
 
-void fadd(fenv_t *f, fstack_t *stack)
+void fadd(fenv_t *f, fobj_t *stack)
 {
-    felem_t dest, op1, op2;
+    fobj_t *op2 = ftable_pop(f, stack);
+    fobj_t *op1 = ftable_pop(f, stack);
 
-    fstack_pop(f, stack, &op2);
-    fstack_pop(f, stack, &op1);
+    ftable_push(f, stack, fobj_add(f, op1, op2));
 
-    fobj_add(f, &dest, &op1, &op2);
-
-    felem_free(f, &op1);
-    felem_free(f, &op2);
-
-    fstack_push(f, stack, &dest);
+    fobj_release(f, op1);
+    fobj_release(f, op2);
 }
 
-void fsub(fenv_t *f, fstack_t *stack)
+void fsub(fenv_t *f, fobj_t *stack)
 {
-    felem_t dest, op1, op2;
+    fobj_t *op2 = ftable_pop(f, stack);
+    fobj_t *op1 = ftable_pop(f, stack);
 
-    fstack_pop(f, stack, &op2);
-    fstack_pop(f, stack, &op1);
+    ftable_push(f, stack, fobj_sub(f, op1, op2));
 
-    fobj_sub(f, &dest, &op1, &op2);
-
-    felem_free(f, &op1);
-    felem_free(f, &op2);
-
-    fstack_push(f, stack, &dest);
+    fobj_release(f, op1);
+    fobj_release(f, op2);
 }
 
 int main(int argc, char *argv[])
 {
     fenv_t *f = NULL;
+    fobj_t *r;
+    fobj_t *dstack = ftable_new(f, NULL);
 
-    fstack_t *dstack = fstack_new(f, "data stack");
-
-    fstack_push_obj(f, dstack, fnum_new(f, 2));
-    fstack_push_obj(f, dstack, fnum_new(f, 5));
-    fstack_push_obj(f, dstack, fnum_new(f, 8));
+    ftable_push(f, dstack, fnum_new(f, 2));
+    ftable_push(f, dstack, fnum_new(f, 5));
+    ftable_push(f, dstack, fnum_new(f, 8));
 
     fadd(f, dstack);
     fsub(f, dstack);
 
-    felem_t n;
-
-    fstack_pop(f, dstack, &n);
     printf("Result = ");
-    fobj_print(f, n.obj);
+    r = ftable_pop(f, dstack);
+    fobj_print(f, r);
+    fobj_release(f, r);
 
-    fstack_push_obj(f, dstack, fstr_new(f, "Hello"));
-    fstack_push_obj(f, dstack, fstr_new(f, " world"));
+    ftable_push(f, dstack, fstr_new(f, "Hello"));
+    ftable_push(f, dstack, fstr_new(f, " world"));
     fadd(f, dstack);
 
-    fstack_pop(f, dstack, &n);
     printf("Result = ");
-    fobj_print(f, n.obj);
+    r = ftable_pop(f, dstack);
+    fobj_print(f, r);
+    fobj_release(f, r);
 
-    fstack_free(f, dstack);
+    fobj_release(f, dstack);
 
     return 0;
 }

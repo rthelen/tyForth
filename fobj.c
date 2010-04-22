@@ -10,10 +10,10 @@
 
 
 const foptable_t op_table[FOBJ_NUM_TYPES] = {
-    { 0, 0, 0 }, // The zeroth entry is INVALID
+    { 0 }, // The zeroth entry is INVALID
     { "number", fnum_free, fnum_print, fnum_add, fnum_sub },
-    { "string", fstr_free, fstr_print, fstr_add, fstr_sub },
-    { "table",  ftable_free, ftable_print, ftable_add, ftable_sub },
+    { "string", fstr_free, fstr_print, fstr_add, fstr_sub, NULL, fstr_fetch },
+    { "table",  ftable_free, ftable_print, NULL, NULL, ftable_store, ftable_fetch },
 };
 
 
@@ -42,13 +42,16 @@ void fobj_release(fenv_t *f, fobj_t *p)
     }
 }
 
-void fobj_retain(fenv_t *f, fobj_t *p)
+fobj_t *fobj_retain(fenv_t *f, fobj_t *p)
 {
-    ASSERT(p);
+    if (!p) return p;
+
     ASSERT(p->type);
     ASSERT(p->refcount > 0);
 
     p->refcount += 1;
+
+    return p;
 }
 
 void fobj_print(fenv_t *f, fobj_t *p)
@@ -63,19 +66,27 @@ void fobj_print(fenv_t *f, fobj_t *p)
     op_table[p->type].print(f, p);
 }
 
-void fobj_add(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+fobj_t *fobj_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
-    felem_init(f, dest, NULL);
-    op_table[op1->obj->type].add(f, dest, op1, op2);
+    fassert(f, !!op_table[op1->type].add, 1, "%s <> + not supported",
+            op_table[op1->type].type_name);
+
+    return op_table[op1->type].add(f, op1, op2);
 }    
 
-void fobj_sub(fenv_t *f, felem_t *dest, felem_t *op1, felem_t *op2)
+fobj_t *fobj_sub(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
-    felem_init(f, dest, NULL);
-    if (op_table[op1->obj->type].sub(f, dest, op1, op2) == 0) {
-        fassert(f, FALSE, 1, "%s %s + not supported",
-                op_table[op1->obj->type].type_name,
-                op_table[op2->obj->type].type_name);
-    }
+    fassert(f, !!op_table[op1->type].sub, 1, "%s <> - not supported",
+            op_table[op1->type].type_name);
+
+    return op_table[op1->type].sub(f, op1, op2);
+}    
+
+fobj_t *fobj_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
+{
+    fassert(f, !!op_table[addr->type].fetch, 1, "%s @ not supported",
+            op_table[addr->type].type_name);
+
+    return op_table[addr->type].fetch(f, addr, index);
 }    
 
