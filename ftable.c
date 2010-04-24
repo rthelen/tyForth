@@ -225,9 +225,11 @@ void ftable_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
     switch(index->type) {
     case FOBJ_NUM:
         ftable_num_store(f, &addr->u.table, index->u.num.n, data);
+        break;
 
     case FOBJ_STR:
         ftable_key_store(f, &addr->u.table, index, data);
+        break;
 
     default:
         fassert(f, 0, 1, "table store must be indexed by NUM or STRING");
