@@ -30,10 +30,10 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
     exit(-1);
 }
 
-#define PUSH(x)				ftable_push(f, stack, x)
+#define PUSH(x)				fstack_store(f, stack, NULL, x)
 #define PUSHN(n)			PUSH(fnum_new(f, n))
 #define PUSHS(s)			PUSH(fstr_new(f, s))
-#define POP					ftable_pop(f, stack)
+#define POP					fstack_fetch(f, stack, NULL)
 #define RETAIN(x)			fobj_retain(f, x)
 #define RELEASE(x)			fobj_release(f, x)
 #define ADD(a, b)			fobj_add(f, a, b)
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 {
     fenv_t *f = NULL;
     fobj_t *r;
-    fobj_t *stack = ftable_new(f, NULL);
+    fobj_t *stack = fstack_new(f);
 
     /*
      * Test arithmetic

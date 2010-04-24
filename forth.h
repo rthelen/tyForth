@@ -29,10 +29,13 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_NUM		1
 #define FOBJ_STR		2
 #define FOBJ_TABLE		3
-#define FOBJ_FUNC		4
-#define FOBJ_WORD		5
-#define FOBJ_INDEX		6
-#define FOBJ_NUM_TYPES	7
+#define FOBJ_ARRAY		4
+#define FOBJ_HASH		5
+#define FOBJ_STACK		6
+#define FOBJ_FUNC		7
+#define FOBJ_WORD		8
+#define FOBJ_INDEX		9
+#define FOBJ_NUM_TYPES	10
 
 typedef struct fobj_s fobj_t;
 typedef struct ftable_s ftable_t;
@@ -66,7 +69,7 @@ fobj_t *fstr_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fstr_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fstr_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
-fobj_t *ftable_new(fenv_t *f, const ftable_t *table);
+fobj_t *ftable_new(fenv_t *f);
 void    ftable_print(fenv_t *f, fobj_t *p);
 void    ftable_free(fenv_t *f, fobj_t *p);
 fobj_t *ftable_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
@@ -76,6 +79,22 @@ void    ftable_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 void    ftable_push(fenv_t *f, fobj_t *stack, fobj_t *data);
 fobj_t *ftable_pop(fenv_t *f, fobj_t *stack);
 
+fobj_t *farray_new(fenv_t *f);
+void    farray_print(fenv_t *f, fobj_t *a);
+void    farray_free(fenv_t *f, fobj_t *a);
+void    farray_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
+fobj_t *farray_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
+fobj_t *fstack_new(fenv_t *f);
+void    fstack_print(fenv_t *f, fobj_t *a);
+void    fstack_free(fenv_t *f, fobj_t *a);
+void    fstack_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
+fobj_t *fstack_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
+
+fobj_t *fhash_new(fenv_t *f);
+void    fhash_print(fenv_t *f, fobj_t *a);
+void    fhash_free(fenv_t *f, fobj_t *a);
+void    fhash_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
+fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
 #endif /* __FORTH_H__ */

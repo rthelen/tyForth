@@ -11,6 +11,9 @@
 typedef struct fnum_s fnum_t;
 typedef struct fstr_s fstr_t;
 typedef struct findex_s findex_t;
+typedef struct farray_s farray_t;
+typedef struct fhash_s fhash_t;
+typedef struct fstack_s fstack_t;
 
 typedef double fnumber_t;
 
@@ -23,13 +26,26 @@ struct fstr_s {
     char		*buf;
 };
 
-struct ftable_s {
+struct farray_s {
     int			 num;
-    fobj_t		**array;
+    fobj_t		**elems;
+};
 
+struct fstack_s {
+    int			 sp;
+    int			 max_sp;
+    fobj_t		**elems;
+};
+
+struct fhash_s {
     int			 num_kv;
     fobj_t		**keys;
     fobj_t		**vals;
+};
+
+struct ftable_s {
+    fobj_t		*array;
+    fobj_t		*hash;
 };
 
 struct findex_s {
@@ -45,6 +61,9 @@ struct fobj_s {
         fstr_t		 str;
         ftable_t	 table;
         findex_t	 index;
+        farray_t	 array;
+        fhash_t		 hash;
+        fstack_t	 stack;
     } u;
 };
 
@@ -53,10 +72,11 @@ typedef struct foptable_s {
     void (*free)(fenv_t *f, fobj_t *p);
     void (*print)(fenv_t *f, fobj_t *p);
 
-    fobj_t *(*add)(fenv_t *f, fobj_t *op1, fobj_t *op2);
-    fobj_t *(*sub)(fenv_t *f, fobj_t *op1, fobj_t *op2);
     void    (*store)(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
     fobj_t *(*fetch)(fenv_t *f, fobj_t *addr, fobj_t *index);
+
+    fobj_t *(*add)(fenv_t *f, fobj_t *op1, fobj_t *op2);
+    fobj_t *(*sub)(fenv_t *f, fobj_t *op1, fobj_t *op2);
 } foptable_t;
 
 extern const foptable_t op_table[];

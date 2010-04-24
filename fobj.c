@@ -11,9 +11,12 @@
 
 const foptable_t op_table[FOBJ_NUM_TYPES] = {
     { 0 }, // The zeroth entry is INVALID
-    { "number", fnum_free, fnum_print, fnum_add, fnum_sub },
-    { "string", fstr_free, fstr_print, fstr_add, fstr_sub, NULL, fstr_fetch },
-    { "table",  ftable_free, ftable_print, NULL, NULL, ftable_store, ftable_fetch },
+    { "number", fnum_free, fnum_print, NULL, NULL, fnum_add, fnum_sub },
+    { "string", fstr_free, fstr_print, NULL, fstr_fetch, fstr_add, fstr_sub },
+    { "table",  ftable_free, ftable_print, ftable_store, ftable_fetch },
+    { "array",  farray_free, farray_print, farray_store, farray_fetch },
+    { "hash",   fhash_free,  fhash_print,  fhash_store, fhash_fetch },
+    { "stack",  fstack_free, fstack_print, fstack_store, fstack_fetch },
 };
 
 
