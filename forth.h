@@ -50,9 +50,13 @@ typedef struct fenv_s {
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
 
 void fobj_garbage_collection(fenv_t *f);
+
+fenv_t *fenv_new(void);
+void    fenv_free(fenv_t *f);
+
 fobj_t *findex_new(fenv_t *f, fobj_t *addr, fobj_t *index);
-void findex_visit(fenv_t *f, fobj_t *p);
-fenv_t *fenv_init(fenv_t *f);
+void    findex_visit(fenv_t *f, fobj_t *p);
+
 fobj_t *fobj_new(fenv_t *f, int type);
 void    fobj_visit(fenv_t *f, fobj_t *p);
 void    fobj_print(fenv_t *f, fobj_t *p);
@@ -109,5 +113,16 @@ void    fhash_print(fenv_t *f, fobj_t *a);
 void    fhash_visit(fenv_t *f, fobj_t *a);
 void    fhash_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
+
+void    fpush(fenv_t *f, fobj_t *p);
+fobj_t *fpop(fenv_t *f);
+void    fdup(fenv_t *f);
+void    fdrop(fenv_t *f);
+void    fover(fenv_t *f);
+void    fadd(fenv_t *f);
+void    fsub(fenv_t *f);
+void    fstore(fenv_t *f);
+void    ffetch(fenv_t *f);
+void    findex(fenv_t *f);
 
 #endif /* __FORTH_H__ */

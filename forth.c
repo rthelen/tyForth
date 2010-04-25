@@ -33,90 +33,18 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
 #define GC					fobj_garbage_collection(f)
 
 #define PUSH(x)				fpush(f, x)
-#define PUSHN(n)			PUSH(fnum_new(f, n))
-#define PUSHS(s)			PUSH(fstr_new(f, s))
-#define POP					fpop(f)
+#define PUSHN(n)			fpush(f, fnum_new(f, n))
+#define PUSHS(s)			fpush(f, fstr_new(f, s))
+#define POP()				fpop(f)
 #define OVER()				fover(f)
 #define DUP()				fdup(f)
-#define ADD(a, b)			fobj_add(f, a, b)
-#define SUB(a, b)			fobj_sub(f, a, b)
-#define STORE(a,i,d)		fobj_store(f, a, i, d)
-#define FETCH(a,i)			fobj_fetch(f, a, i)
-#define PRINT(x)			fobj_print(f, x)
+#define ADD()				fadd(f)
+#define SUB()				fsub(f)
+#define PRINT()				fobj_print(f, fpop(f))
 
-#define FADD				fadd(f)
-#define FSUB				fsub(f)
-#define FSTORE()			fstore(f)
-#define FFETCH()			ffetch(f)
-
-void fadd(fenv_t *f)
-{
-    fobj_t *op2 = POP;
-    fobj_t *op1 = POP;
-
-    PUSH(ADD(op1, op2));
-}
-
-void fsub(fenv_t *f)
-{
-    fobj_t *op2 = POP;
-    fobj_t *op1 = POP;
-
-    PUSH(SUB(op1, op2));
-}
-
-fobj_t *fpop(fenv_t *f)
-{
-    return fstack_fetch(f, f->dstack, NULL);
-}
-
-void fpush(fenv_t *f, fobj_t *p)
-{
-    fstack_store(f, f->dstack, NULL, x);
-}
-
-void fover(fenv_t *f)
-{
-    fobj_t *a, *b;
-    a = POP;
-    b = POP;
-    PUSH(b);
-    PUSH(a);
-    PUSH(b);
-}
-
-void fdup(fenv_t *f)
-{
-    fobj_t *a;
-    a = POP;
-    PUSH(a);
-    PUSH(a);
-}
-
-void ffetch(fenv_t *f)
-{
-    fobj_t *addr = POP;
-    fobj_t *index = NULL;
-    if (fobj_is_index(f, addr)) {
-        index = addr->u.index.index;
-        addr =  addr->u.index.addr;
-    }
-
-    PUSH(fobj_fetch(f, addr, index));
-}
-
-void fstore(fenv_t *f)
-{
-    fobj_t *addr = POP;
-    fobj_t *index = NULL;
-    if (fobj_is_index(f, addr)) {
-        index = addr->u.index.index;
-        addr =  addr->u.index.addr;
-    }
-    fobj_t *data = POP;
-
-    fobj_store(f, addr, index, data);
-}
+#define STORE()				fstore(f)
+#define FETCH()				ffetch(f)
+#define INDEX()				findex(f)
 
 static void test_strings(fenv_t *f)
 {
@@ -124,18 +52,17 @@ static void test_strings(fenv_t *f)
     GC;
     PUSHS(" world\n");
     GC;
-    FADD;
+    ADD();
     GC;
 
     printf("Result = ");
-    PRINT(POP);
+    PRINT();
     GC;
 
     char line[256];
     int i;
     PUSH(ftable_new(f));
 
-#define INDEX()	do { fobj_t *i = POP; fobj_t *a = POP; PUSH(findex_new(f, a, i)); } while (0)
 
     for (i = 0; i < 25; i++) {
         snprintf(line, sizeof(line), "Test %d\n", i);
@@ -148,7 +75,7 @@ static void test_strings(fenv_t *f)
         GC;
         INDEX();
         GC;
-        FSTORE();
+        STORE();
         GC;
     }
     for (i = 0; i < 25; i++) {
@@ -158,17 +85,16 @@ static void test_strings(fenv_t *f)
         GC;
         INDEX();
         GC;
-        FFETCH();
+        FETCH();
         GC;
-        PRINT(POP);
+        PRINT();
         GC;
     }
 }
 
 int main(int argc, char *argv[])
 {
-    fenv_t myEnv;
-    fenv_t *f = fenv_init(&myEnv);
+    fenv_t *f = fenv_new();
 
     /*
      * Test arithmetic
@@ -181,16 +107,18 @@ int main(int argc, char *argv[])
     PUSHN(8);
     GC;
 
-    FADD;
+    ADD();
     GC;
-    FSUB;
+    SUB();
     GC;
 
     printf("Result = ");
-    PRINT(POP);
+    PRINT();
     GC;
 
     test_strings(f);
+
+    fenv_free(f);
 
     return 0;
 }

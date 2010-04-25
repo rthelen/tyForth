@@ -56,12 +56,27 @@ static int fobj_obj_mem_used(fenv_t *f, fobj_t *p)
     return fobj_obj_index_used(f, i);
 }
 
-fenv_t *fenv_init(fenv_t *f)
+fenv_t *fenv_new(void)
 {
+    fenv_t *f = calloc(1, sizeof(*f));
+
     f->obj_memory = calloc(1, sizeof(*f->obj_memory));
     f->dstack = fstack_new(f);
     f->rstack = fstack_new(f);
+
     return f;
+}
+
+void fenv_free(fenv_t *f)
+{
+    f->dstack = NULL;
+    f->rstack = NULL;
+    fobj_garbage_collection(f);
+#ifdef DEBUG
+    for (int i = 0; i < NUM_OBJ_MEM/32; i++) {
+        ASSERT(f->obj_memory->inuse_bitmap[i] == 0);
+    }
+#endif
 }
 
 fobj_t *fobj_new(fenv_t *f, int type)
