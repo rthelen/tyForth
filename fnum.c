@@ -10,7 +10,11 @@
 
 void fnum_print(fenv_t *f, fobj_t *p)
 {
+#ifdef DEBUG
     printf("    Value = %f\n", p->u.num.n);
+#else
+    printf(" %f\n", p->u.num.n);
+#endif
 }
 
 fobj_t *fnum_new(fenv_t *f, double n)
