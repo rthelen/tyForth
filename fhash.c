@@ -32,14 +32,18 @@ fobj_t *fhash_new(fenv_t *f)
     return p;
 }
 
+void fhash_visit(fenv_t *f, fobj_t *p)
+{
+    fhash_t *h = &p->u.hash;
+    for (int i = 0; i < h->num_kv; i++) {
+        fobj_visit(f, h->keys[i]);
+        fobj_visit(f, h->vals[i]);
+    }
+}
+
 void fhash_free(fenv_t *f, fobj_t *p)
 {
     fhash_t *h = &p->u.hash;
-
-    for (int i = 0; i < h->num_kv; i++) {
-        fobj_release(f, h->keys[i]);
-        fobj_release(f, h->vals[i]);
-    }
 
     if (h->keys) {
         free(h->keys);
@@ -52,8 +56,8 @@ static void fhash_add_key_val(fenv_t *f, fhash_t *h, fobj_t *key, fobj_t *val)
     int n = h->num_kv + 1;
     h->keys = realloc(h->keys, n * sizeof(fobj_t **));
     h->vals = realloc(h->vals, n * sizeof(fobj_t **));
-    h->keys[h->num_kv] = fobj_retain(f, key);
-    h->vals[h->num_kv] = fobj_retain(f, val);
+    h->keys[h->num_kv] = key;
+    h->vals[h->num_kv] = val;
     h->num_kv ++;
 }
 
@@ -69,29 +73,9 @@ static fobj_t **fhash_key_index(fenv_t *f, fhash_t *h, fobj_t *key)
     return NULL;
 }
 
-static fobj_t *fhash_obj_fetch(fenv_t *f, fobj_t **p)
-{
-    if (!p) {
-        return NULL;
-    }
-
-    return fobj_retain(f, *p);
-}
-
 static fobj_t *fhash_key_fetch(fenv_t *f, fhash_t *h, fobj_t *key)
 {
-    return fhash_obj_fetch(f, fhash_key_index(f, h, key));
-}
-
-static void fhash_obj_store(fenv_t *f, fobj_t **valp, fobj_t *data)
-{
-    ASSERT(valp);
-
-    if (*valp) {
-        fobj_release(f, *valp);
-    }
-
-    *valp = fobj_retain(f, data);
+    return *fhash_key_index(f, h, key);
 }
 
 static void fhash_key_store(fenv_t *f, fhash_t *h, fobj_t *key, fobj_t *data)
@@ -99,7 +83,7 @@ static void fhash_key_store(fenv_t *f, fhash_t *h, fobj_t *key, fobj_t *data)
     fobj_t **valp = fhash_key_index(f, h, key);
 
     if (valp) {
-        fhash_obj_store(f, valp, data);
+        *valp = data;
     } else {
         fhash_add_key_val(f, h, key, data);
     }

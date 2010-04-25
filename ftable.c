@@ -28,12 +28,12 @@ fobj_t *ftable_new(fenv_t *f)
     return p;
 }
 
-void ftable_free(fenv_t *f, fobj_t *p)
+void ftable_visit(fenv_t *f, fobj_t *p)
 {
     ftable_t *t = &p->u.table;
 
-    farray_free(f, t->array);
-    fhash_free(f, t->hash);
+    fobj_visit(f, t->array);
+    fobj_visit(f, t->hash);
 }
 
 /***********************************

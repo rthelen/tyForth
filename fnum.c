@@ -20,11 +20,6 @@ fobj_t *fnum_new(fenv_t *f, double n)
     return p;
 }
 
-void fnum_free(fenv_t *f, fobj_t *p)
-{
-    /* Nothing for a number */
-}
-
 fobj_t *fnum_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
     ASSERT(op1->type == FOBJ_NUM);

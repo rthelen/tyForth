@@ -49,13 +49,12 @@ struct ftable_s {
 };
 
 struct findex_s {
-    fobj_t		*source;
+    fobj_t		*addr;
     fobj_t		*index;
 };
 
 struct fobj_s {
     int				 type;
-    int				 refcount;
     union {
         fnum_t		 num;
         fstr_t		 str;
@@ -69,6 +68,7 @@ struct fobj_s {
 
 typedef struct foptable_s {
     const char *type_name;
+    void (*visit)(fenv_t *f, fobj_t *p);
     void (*free)(fenv_t *f, fobj_t *p);
     void (*print)(fenv_t *f, fobj_t *p);
 

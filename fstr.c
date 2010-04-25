@@ -10,11 +10,13 @@
 
 void fstr_print(fenv_t *f, fobj_t *p)
 {
-    if (p->u.str.buf) {
-        printf("    String = \"%s\"\n", p->u.str.buf);
-    } else {
-        printf("    String = (null)\n");
-    }
+    char *s = p->u.str.buf ? p->u.str.buf : "(null)";
+
+#ifdef DEBUG
+    printf("    String = %s\n", s);
+#else
+    printf("%s", s);
+#endif
 }
 
 fobj_t *fstr_new(fenv_t *f, const char *str)

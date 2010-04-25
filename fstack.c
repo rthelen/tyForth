@@ -28,13 +28,17 @@ fobj_t *fstack_new(fenv_t *f)
     return p;
 }
 
+void fstack_visit(fenv_t *f, fobj_t *p)
+{
+    fstack_t *s = &p->u.stack;
+    for (int i = 0; i < s->sp; i++) {
+        fobj_visit(f, s->elems[i]);
+    }
+}
+
 void fstack_free(fenv_t *f, fobj_t *p)
 {
     fstack_t *s = &p->u.stack;
-
-    while (s->sp-- > 0) {
-        fobj_release(f, s->elems[s->sp]);
-    }
 
     if (s->elems) {
         free(s->elems);
@@ -55,7 +59,7 @@ fobj_t *fstack_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
     fstack_t *s = &addr->u.stack;
     fassert(f, !index, 1, "indexed fetch of stack not supported");  // Yet.
     fassert(f, s->sp > 0, 1, "stack underflow error");
-    return fobj_retain(f, s->elems[--s->sp]);
+    return s->elems[--s->sp];
 }
 
 void fstack_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
@@ -67,5 +71,5 @@ void fstack_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
     if (s->sp == s->max_sp) {
         fstack_grow(f, s);
     }
-    s->elems[s->sp++] = fobj_retain(f, data);
+    s->elems[s->sp++] = data;
 }
