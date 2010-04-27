@@ -15,8 +15,6 @@ typedef struct farray_s farray_t;
 typedef struct fhash_s fhash_t;
 typedef struct fstack_s fstack_t;
 
-typedef double fnumber_t;
-
 struct fnum_s {
     fnumber_t		n;
 };
