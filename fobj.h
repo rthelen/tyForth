@@ -37,8 +37,7 @@ struct fstack_s {
 
 struct fhash_s {
     int			 num_kv;
-    fobj_t		**keys;
-    fobj_t		**vals;
+    fobj_t		**keys_values;
 };
 
 struct ftable_s {

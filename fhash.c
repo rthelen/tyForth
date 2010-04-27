@@ -8,15 +8,18 @@
 #include "forth.h"
 #include "fobj.h"
 
+#define KEY(_h, _i)		(_h)->keys_values[2 * (_i) + 0]
+#define VAL(_h, _i)		(_h)->keys_values[2 * (_i) + 1]
+
 void fhash_print(fenv_t *f, fobj_t *p)
 {
     ASSERT(p->type == FOBJ_HASH);
     fhash_t *h = &p->u.hash;
 
     for (int i = 0; i < h->num_kv; i++) {
-        fobj_print(f, h->keys[i]);
+        fobj_print(f, KEY(h, i));
         printf(" = ");
-        fobj_print(f, h->vals[i]);
+        fobj_print(f, VAL(h, i));
     }
 }
 
@@ -26,8 +29,7 @@ fobj_t *fhash_new(fenv_t *f)
     fhash_t *h = &p->u.hash;
 
     h->num_kv = 0;
-    h->keys = NULL;
-    h->vals = NULL;
+    h->keys_values = NULL;
 
     return p;
 }
@@ -36,8 +38,8 @@ void fhash_visit(fenv_t *f, fobj_t *p)
 {
     fhash_t *h = &p->u.hash;
     for (int i = 0; i < h->num_kv; i++) {
-        fobj_visit(f, h->keys[i]);
-        fobj_visit(f, h->vals[i]);
+        fobj_visit(f, KEY(h, i));
+        fobj_visit(f, VAL(h, i));
     }
 }
 
@@ -45,28 +47,26 @@ void fhash_free(fenv_t *f, fobj_t *p)
 {
     fhash_t *h = &p->u.hash;
 
-    if (h->keys) {
-        free(h->keys);
-        free(h->vals);
+    if (h->keys_values) {
+        free(h->keys_values);
     }
 }
 
 static void fhash_add_key_val(fenv_t *f, fhash_t *h, fobj_t *key, fobj_t *val)
 {
-    int n = h->num_kv + 1;
-    h->keys = realloc(h->keys, n * sizeof(fobj_t **));
-    h->vals = realloc(h->vals, n * sizeof(fobj_t **));
-    h->keys[h->num_kv] = key;
-    h->vals[h->num_kv] = val;
+    int n = 2 * h->num_kv + 2;
+    h->keys_values = realloc(h->keys_values, n * sizeof(fobj_t **));
+    KEY(h, h->num_kv) = key;
+    VAL(h, h->num_kv) = val;
     h->num_kv ++;
 }
 
 static fobj_t **fhash_key_index(fenv_t *f, fhash_t *h, fobj_t *key)
 {
     for (int i = 0; i < h->num_kv; i++) {
-        ASSERT(h->keys[i]->type == FOBJ_STR);
-        if (strcmp(key->u.str.buf, h->keys[i]->u.str.buf) == 0) {
-            return &h->vals[i];
+        ASSERT(KEY(h, i)->type == FOBJ_STR);
+        if (strcmp(key->u.str.buf, KEY(h, i)->u.str.buf) == 0) {
+            return &VAL(h, i);
         }
     }
 
