@@ -75,7 +75,13 @@ static fobj_t **fhash_key_index(fenv_t *f, fhash_t *h, fobj_t *key)
 
 static fobj_t *fhash_key_fetch(fenv_t *f, fhash_t *h, fobj_t *key)
 {
-    return *fhash_key_index(f, h, key);
+    fobj_t **val = fhash_key_index(f, h, key);
+
+    if (val) {
+        return *val;
+    } else {
+        return NULL;
+    }
 }
 
 static void fhash_key_store(fenv_t *f, fhash_t *h, fobj_t *key, fobj_t *data)
