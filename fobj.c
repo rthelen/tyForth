@@ -63,6 +63,7 @@ fenv_t *fenv_new(void)
     f->obj_memory = calloc(1, sizeof(*f->obj_memory));
     f->dstack = fstack_new(f);
     f->rstack = fstack_new(f);
+    f->words  = ftable_new(f);
 
     return f;
 }
@@ -209,4 +210,11 @@ int fobj_is_index(fenv_t *f, fobj_t *obj)
     } else {
         return 0;
     }
+}
+
+fobj_t *fcode_new(fenv_t *f, fcode_t c)
+{
+    fobj_t *p = fobj_new(f, FOBJ_CODE);
+    p->u.code = c;
+    return p;
 }

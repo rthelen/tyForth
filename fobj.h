@@ -60,6 +60,7 @@ struct fobj_s {
         farray_t	 array;
         fhash_t		 hash;
         fstack_t	 stack;
+        fcode_t		 code;
     } u;
 };
 

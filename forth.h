@@ -33,7 +33,7 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_HASH		5
 #define FOBJ_STACK		6
 #define FOBJ_INDEX		7
-#define FOBJ_FUNC		8
+#define FOBJ_CODE		8
 #define FOBJ_WORD		9
 #define FOBJ_NUM_TYPES	10
 
@@ -44,14 +44,19 @@ typedef uint32_t fuint_t;
 typedef struct fobj_s fobj_t;
 typedef struct ftable_s ftable_t;
 typedef struct fobj_mem_s fobj_mem_t;
+typedef struct fheader_s fheader_t;
+typedef struct fenv_s fenv_t;
+typedef struct forth_header_s forth_header_t;
 
-typedef struct fenv_s {
+typedef void (*fcode_t)(fenv_t *f, forth_header_t *word_header);
+
+struct fenv_s {
     fobj_mem_t		*obj_memory;
     fobj_t			*dstack;
     fobj_t			*rstack;
     fobj_t			*words;
     fobj_t			*imm_words;
-} fenv_t;
+};
 
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
 
@@ -88,7 +93,6 @@ fobj_t *ftable_new(fenv_t *f);
 void    ftable_visit(fenv_t *f, fobj_t *p);
 void    ftable_free(fenv_t *f, fobj_t *p);
 void    ftable_print(fenv_t *f, fobj_t *p);
-void    ftable_visit(fenv_t *f, fobj_t *p);
 fobj_t *ftable_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *ftable_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *ftable_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
@@ -100,7 +104,6 @@ fobj_t *farray_new(fenv_t *f);
 void    farray_visit(fenv_t *f, fobj_t *a);
 void    farray_free(fenv_t *f, fobj_t *a);
 void    farray_print(fenv_t *f, fobj_t *a);
-void    farray_visit(fenv_t *f, fobj_t *a);
 void    farray_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 fobj_t *farray_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
@@ -108,7 +111,6 @@ fobj_t *fstack_new(fenv_t *f);
 void    fstack_visit(fenv_t *f, fobj_t *a);
 void    fstack_free(fenv_t *f, fobj_t *a);
 void    fstack_print(fenv_t *f, fobj_t *a);
-void    fstack_visit(fenv_t *f, fobj_t *a);
 void    fstack_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 fobj_t *fstack_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
@@ -119,6 +121,8 @@ void    fhash_print(fenv_t *f, fobj_t *a);
 void    fhash_visit(fenv_t *f, fobj_t *a);
 void    fhash_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
+
+fobj_t *fcode_new(fenv_t *f, fcode_t c);
 
 #define MKFNAME(x)			fword_ ## x
 #define FCODE(x)			void MKFNAME(x)(fenv_t *f, forth_header_t *w)
@@ -141,21 +145,18 @@ fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 #define FETCH				MKFNAME(fetch)(f, w)
 #define INDEX				MKFNAME(index)(f, w)
 
-typedef struct forth_header_s forth_header_t;
-
 void    fpush(fenv_t *f, forth_header_t *w, fobj_t *p);
 fobj_t *fpop(fenv_t *f, forth_header_t *w);
 fnumber_t fpop_num(fenv_t *f, forth_header_t *w);
 fint_t  fpop_int(fenv_t *f, forth_header_t *w);
-typedef void (*forth_code_word_t)(fenv_t *f, forth_header_t *word_header);
-typedef union forth_body_u {
+typedef union fbody_u {
     forth_header_t  *word;
     fnumber_t		 n;
-} forth_body_t;
+} fbody_t;
 
 struct forth_header_s {
     char				*name;
-    forth_code_word_t	 code;
+    fcode_t				 code;
 };
 
 #define MKHDRNAME(_name)	_name ## _header
