@@ -20,6 +20,11 @@ endif
 forth: clean ${OBJS} ${INCL}
 	cc ${OBJS} -o $@
 
+objects/forth.o: fwords.inc
+
+fwords.inc: fprimitives.c forth.h gen_fword_inc.pl
+	./gen_fword_inc.pl < $< > $@
+
 .PHONY: objects
 objects:
 	@mkdir -p objects
@@ -30,4 +35,4 @@ objects/%.o: %.c ${INCL} objects
 clean:
 	rm -f *~
 	rm -rf objects
-	rm -f forth
+	rm -f forth fwords.inc
