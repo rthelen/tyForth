@@ -50,6 +50,20 @@ void add_code_dict(fenv_t *f, forth_header_t *h)
     ftable_store(f, f->words, name, code);
 }
 
+void exec_word(fenv_t *f, char *word)
+{
+    fobj_t *name = fstr_new(f, word);
+    fobj_t *val  = ftable_fetch(f, f->words, name);
+
+    if (val) {
+        fcode_t code = val->u.code;
+        code(f, NULL);
+    } else {
+        fprintf(stderr, "ERROR: %s not defined\n", word);
+        exit(1);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     fenv_t *f = fenv_new();
@@ -61,6 +75,9 @@ int main(int argc, char *argv[])
     for (int i = 0; dictionary_ptrs[i]; i++) {
         add_code_dict(f, dictionary_ptrs[i]);
     }
+
+    exec_word(f, "1");
+    exec_word(f, ".");
 
     fenv_free(f);
 

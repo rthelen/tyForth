@@ -54,6 +54,7 @@ FCODE(print)
 #define B		fobj_t *b
 #define C		fobj_t *c
 
+FWORD2(dot, ".") { PRINT; }
 FWORD(dup)      { A = POP; PUSH(a); PUSH(a); }
 FWORD(drop)     { POP; }
 FWORD(swap)     { A = POP; B = POP; PUSH(a); PUSH(b); }
@@ -146,3 +147,9 @@ FWORD2(index, "]")
 
     PUSH(findex_new(f, a, b));
 }
+
+FWORD2(one, "1")
+{
+    PUSHN(1);
+}
+
