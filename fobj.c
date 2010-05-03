@@ -11,13 +11,13 @@
 
 const foptable_t op_table[FOBJ_NUM_TYPES] = {
     { 0 }, // The zeroth entry is INVALID
-    { "number", NULL, NULL, fnum_print, NULL, NULL, fnum_add, fnum_sub },
-    { "string", NULL, fstr_free, fstr_print, NULL, fstr_fetch, fstr_add, fstr_sub },
-    { "table",  ftable_visit, NULL, ftable_print, ftable_store, ftable_fetch },
-    { "array",  farray_visit, farray_free, farray_print, farray_store, farray_fetch },
-    { "hash",   fhash_visit,  fhash_free, fhash_print,  fhash_store, fhash_fetch },
-    { "stack",  fstack_visit, fstack_free, fstack_print, fstack_store, fstack_fetch },
-    { "index",  findex_visit, NULL, NULL, NULL, NULL },
+    { "number", NULL, NULL, fnum_print, fnum_cmp, NULL, NULL, fnum_add, fnum_sub },
+    { "string", NULL, fstr_free, fstr_print, fstr_cmp, NULL, fstr_fetch, fstr_add, fstr_sub },
+    { "table",  ftable_visit, NULL, ftable_print, NULL, ftable_store, ftable_fetch },
+    { "array",  farray_visit, farray_free, farray_print, NULL, farray_store, farray_fetch },
+    { "hash",   fhash_visit,  fhash_free, fhash_print, NULL, fhash_store, fhash_fetch },
+    { "stack",  fstack_visit, fstack_free, fstack_print, NULL, fstack_store, fstack_fetch },
+    { "index",  findex_visit, NULL, NULL, NULL, NULL, NULL },
 };
 
 #define NUM_OBJ_MEM		1024
@@ -183,6 +183,30 @@ void    fobj_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
             op_table[addr->type].type_name);
 
     op_table[addr->type].store(f, addr, index, data);
+}
+
+int fobj_cmp(fenv_t *f, fobj_t *a, fobj_t *b)
+{
+    if (a->type == b->type && op_table[a->type].cmp) {
+        return op_table[a->type].cmp(f, a, b);
+    } else {
+        if (a < b)  return -1;
+        if (a == b) return  0;
+        else        return  1;
+    }
+}
+
+int fobj_hash(fenv_t *f, fobj_t *a)
+{
+    int hash = 0;
+    int entropy = a->type | a->type << 4;
+    unsigned char *p = (unsigned char *) a;
+
+    for (int i = 0; i < sizeof(fobj_t *); i++) {
+        hash += (hash << 3) + (p[i] ^ entropy);
+    }
+
+    return hash;
 }
 
 fobj_t *findex_new(fenv_t *f, fobj_t *addr, fobj_t *index)

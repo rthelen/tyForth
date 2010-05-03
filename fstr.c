@@ -19,6 +19,16 @@ void fstr_print(fenv_t *f, fobj_t *p)
 #endif
 }
 
+fobj_t *fstr_new_buf(fenv_t *f, const char *buf, int len)
+{
+    fobj_t *p = fobj_new(f, FOBJ_STR);
+    p->u.str.len = len;
+    p->u.str.buf = malloc(len + 1);
+    bcopy(buf, p->u.str.buf, len);
+    p->u.str.buf[len] = 0;
+    return p;
+}
+
 fobj_t *fstr_new(fenv_t *f, const char *str)
 {
     fobj_t *p = fobj_new(f, FOBJ_STR);
@@ -83,9 +93,51 @@ fobj_t *fstr_sub(fenv_t *f, fobj_t *op1, fobj_t *op2)
     return fstr_compare(f, op1, op2);
 }
 
+int fstr_cmp(fenv_t *f, fobj_t *a, fobj_t *b)
+{
+    if (a == b) return 0;
+
+    fstr_t *A = &a->u.str;
+    fstr_t *B = &b->u.str;
+    int cmp;
+
+    if (A->len < B->len) {
+        cmp = memcmp(A->buf, B->buf, A->len);
+        if (cmp == 0) return 1; // B is 'bigger'
+        else          return cmp;
+    } else if (A->len > B->len) {
+        cmp = memcmp(A->buf, B->buf, B->len);
+        if (cmp == 0) return -1; // A is 'bigger'
+        else          return cmp;
+    } else {
+        cmp = memcmp(A->buf, B->buf, B->len);
+        return cmp;
+    }
+}
+
 fobj_t *fstr_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 {
     // fstr_t *addr = &op1->u.str;
 
     return 0;
+}
+
+int fstr_len(fenv_t *f, fobj_t *str)
+{
+    fassert(f, str->type == FOBJ_STR, 1, "STRING required");
+    return str->u.str.len;
+}
+
+int fstr_getchar(fenv_t *f, fobj_t *str, int offset)
+{
+    if (offset < str->u.str.len) {
+        return str->u.str.buf[offset];
+    } else {
+        return EOF;
+    }
+}
+
+fnumber_t fstr_to_number(fenv_t *f, fobj_t *str)
+{
+    return strtold(str->u.str.buf, NULL);
 }

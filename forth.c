@@ -50,17 +50,103 @@ void add_code_dict(fenv_t *f, forth_header_t *h)
     ftable_store(f, f->words, name, code);
 }
 
-void exec_word(fenv_t *f, char *word)
-{
-    fobj_t *name = fstr_new(f, word);
-    fobj_t *val  = ftable_fetch(f, f->words, name);
+/**********************************************************
+ *
+ * Input Processing Routines
+ *
+ **********************************************************/
 
+static int forth_parse(fenv_t *f, char delim, fobj_t **token) // delim --
+{
+    int start = f->input_offset;
+    char *buf = f->input_str->u.str.buf + start;
+    
+    do {
+        int len = f->input_offset - start;
+        int c = fstr_getchar(f, f->input_str, f->input_offset++);
+
+        if ((c == EOF) || (delim == ' ' && isspace(c)) || (delim == c)) {
+
+            if (len == 0) {
+                *token = NULL;
+                return 0;
+            }
+
+            *token = fstr_new_buf(f, buf, len);
+            if (c == EOF) {
+                return 0; // Didn't find the delimiter
+            } else {
+                return 1; // Found the delimiter
+            }
+        }
+    } while (1);
+}
+
+static int forth_token(fenv_t *f, fobj_t **token_str)
+{
+    do {
+        int c = fstr_getchar(f, f->input_str, f->input_offset);
+        if (isspace(c)) f->input_offset ++;
+        else break;
+    } while (1);
+
+    /*
+     * Parse for the next white space delimited token
+     */
+
+    (void) forth_parse(f, ' ', token_str);
+
+    if (*token_str == NULL) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+static int forth_number_token(fenv_t *f, fobj_t *token, fnumber_t *n)
+{
+    int i, len;
+    char *p, *buf;
+
+    if (token->type != FOBJ_STR) {
+        return 0;
+    }
+
+    buf = token->u.str.buf;
+    len = token->u.str.len;
+
+    if (len == 8) {
+        for (i = 0; i < 8; i++) {
+            if (!isxdigit(buf[i]))
+                break;
+        }
+
+        if (i == 8) {
+            // Assume it's a hex humber
+            *n = strtoll(buf, NULL, 16);
+            return 1;
+        }
+    }
+
+    // This doesn't properly handle floating point numbers.  :-(
+    *n = strtoll(buf, &p, 0);
+    if (*p == '\0') return 1;
+    else            return 0;
+}
+
+
+static void forth_do_token(fenv_t *f, fobj_t *token)
+{
+    fobj_t *val  = ftable_fetch(f, f->words, token);
     if (val) {
         fcode_t code = val->u.code;
         code(f, NULL);
     } else {
-        fprintf(stderr, "ERROR: %s not defined\n", word);
-        exit(1);
+        void *w = NULL;  // for PUSHN()
+        fnumber_t n = 0;
+        int r = forth_number_token(f, token, &n);
+        fassert(f, r, 1, "Word %s not found in the dictionary", token->u.str.buf);
+        PUSHN(n);
     }
 }
 
@@ -76,8 +162,13 @@ int main(int argc, char *argv[])
         add_code_dict(f, dictionary_ptrs[i]);
     }
 
-    exec_word(f, "1");
-    exec_word(f, ".");
+    f->input_str = fstr_new(f, "1 2 + .");
+    fobj_t *token;
+    do {
+        int r = forth_token(f, &token);
+        if (!r) break;
+        forth_do_token(f, token);
+    } while (1);
 
     fenv_free(f);
 

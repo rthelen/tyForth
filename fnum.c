@@ -11,17 +11,24 @@
 void fnum_print(fenv_t *f, fobj_t *p)
 {
 #ifdef DEBUG
-    printf("    Value = %f\n", p->u.num.n);
+    printf("    Value = %Lf\n", p->u.num.n);
 #else
-    printf(" %f\n", p->u.num.n);
+    printf(" %Lf\n", p->u.num.n);
 #endif
 }
 
-fobj_t *fnum_new(fenv_t *f, double n)
+fobj_t *fnum_new(fenv_t *f, fnumber_t n)
 {
     fobj_t *p = fobj_new(f, FOBJ_NUM);
     p->u.num.n = n;
     return p;
+}
+
+int fnum_cmp(fenv_t *f, fobj_t *a, fobj_t *b)
+{
+    if (a->u.num.n  < b->u.num.n) return -1;
+    if (a->u.num.n == b->u.num.n) return  0;
+    else                          return  1;
 }
 
 fobj_t *fnum_add(fenv_t *f, fobj_t *op1, fobj_t *op2)

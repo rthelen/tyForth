@@ -37,7 +37,7 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_WORD		9
 #define FOBJ_NUM_TYPES	10
 
-typedef double fnumber_t;
+typedef long double fnumber_t;
 typedef int32_t fint_t;
 typedef uint32_t fuint_t;
 
@@ -56,6 +56,9 @@ struct fenv_s {
     fobj_t			*rstack;
     fobj_t			*words;
     fobj_t			*imm_words;
+
+    fobj_t			*input_str;
+    int				 input_offset;
 };
 
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
@@ -75,19 +78,26 @@ fobj_t *fobj_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fobj_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fobj_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 void    fobj_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
+int     fobj_cmp(fenv_t *f, fobj_t *a, fobj_t *b);
 int     fobj_is_index(fenv_t *f, fobj_t *obj);
 
-fobj_t *fnum_new(fenv_t *f, double n);
+fobj_t *fnum_new(fenv_t *f, fnumber_t n);
 void    fnum_print(fenv_t *f, fobj_t *p);
+int     fnum_cmp(fenv_t *f, fobj_t *a, fobj_t *b);
 fobj_t *fnum_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fnum_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
 
 fobj_t *fstr_new(fenv_t *f, const char *str);
+fobj_t *fstr_new_buf(fenv_t *f, const char *buf, int len);
 void    fstr_free(fenv_t *f, fobj_t *p);
 void    fstr_print(fenv_t *f, fobj_t *p);
+int     fstr_cmp(fenv_t *f, fobj_t *a, fobj_t *b);
 fobj_t *fstr_add(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fstr_sub(fenv_t *f, fobj_t *op1, fobj_t *op2);
 fobj_t *fstr_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
+int     fstr_len(fenv_t *f, fobj_t *str);
+int     fstr_getchar(fenv_t *f, fobj_t *str, int offset);
+fnumber_t fstr_to_number(fenv_t *f, fobj_t *str);
 
 fobj_t *ftable_new(fenv_t *f);
 void    ftable_visit(fenv_t *f, fobj_t *p);
@@ -145,10 +155,10 @@ fobj_t *fcode_new(fenv_t *f, fcode_t c);
 #define FETCH				MKFNAME(fetch)(f, w)
 #define INDEX				MKFNAME(index)(f, w)
 
-void    fpush(fenv_t *f, forth_header_t *w, fobj_t *p);
-fobj_t *fpop(fenv_t *f, forth_header_t *w);
-fnumber_t fpop_num(fenv_t *f, forth_header_t *w);
-fint_t  fpop_int(fenv_t *f, forth_header_t *w);
+void    MKFNAME(push)(fenv_t *f, forth_header_t *w, fobj_t *p);
+fobj_t *MKFNAME(pop)(fenv_t *f, forth_header_t *w);
+fnumber_t MKFNAME(pop_num)(fenv_t *f, forth_header_t *w);
+fint_t  MKFNAME(pop_int)(fenv_t *f, forth_header_t *w);
 typedef union fbody_u {
     forth_header_t  *word;
     fnumber_t		 n;

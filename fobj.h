@@ -70,6 +70,8 @@ typedef struct foptable_s {
     void (*free)(fenv_t *f, fobj_t *p);
     void (*print)(fenv_t *f, fobj_t *p);
 
+    int     (*cmp)(fenv_t *f, fobj_t *a, fobj_t *b);
+
     void    (*store)(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
     fobj_t *(*fetch)(fenv_t *f, fobj_t *addr, fobj_t *index);
 
