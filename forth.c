@@ -128,7 +128,17 @@ static int forth_number_token(fenv_t *f, fobj_t *token, fnumber_t *n)
         }
     }
 
-    // This doesn't properly handle floating point numbers.  :-(
+    /*
+     * See if the number is a float
+     */
+
+    *n = strtold(buf, &p);
+    if (*p == '\0') return 1;
+
+    /*
+     * See if the number is a hex or octal number
+     */
+
     *n = strtoll(buf, &p, 0);
     if (*p == '\0') return 1;
     else            return 0;
@@ -162,7 +172,7 @@ int main(int argc, char *argv[])
         add_code_dict(f, dictionary_ptrs[i]);
     }
 
-    f->input_str = fstr_new(f, "1 2 + .");
+    f->input_str = fstr_new(f, "1.25 2 1.5 + + .");
     fobj_t *token;
     do {
         int r = forth_token(f, &token);

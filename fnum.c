@@ -13,7 +13,7 @@ void fnum_print(fenv_t *f, fobj_t *p)
 #ifdef DEBUG
     printf("    Value = %Lf\n", p->u.num.n);
 #else
-    printf(" %Lf\n", p->u.num.n);
+    printf(" %Lg\n", p->u.num.n);
 #endif
 }
 
