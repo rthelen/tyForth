@@ -33,9 +33,10 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_HASH		5
 #define FOBJ_STACK		6
 #define FOBJ_INDEX		7
-#define FOBJ_CODE		8
-#define FOBJ_WORD		9
-#define FOBJ_NUM_TYPES	10
+#define FOBJ_WORD		8
+#define FOBJ_CODE		9
+#define FOBJ_DOCOLON	10
+#define FOBJ_NUM_TYPES	11
 
 typedef long double fnumber_t;
 typedef int32_t fint_t;
@@ -46,9 +47,10 @@ typedef struct ftable_s ftable_t;
 typedef struct fobj_mem_s fobj_mem_t;
 typedef struct fheader_s fheader_t;
 typedef struct fenv_s fenv_t;
-typedef struct forth_header_s forth_header_t;
+typedef struct fword_s fword_t;
+typedef struct fdocolon_s fdocolon_t;
 
-typedef void (*fcode_t)(fenv_t *f, forth_header_t *word_header);
+typedef void (*fcode_t)(fenv_t *f, fobj_t *w);
 
 struct fenv_s {
     fobj_mem_t		*obj_memory;
@@ -135,7 +137,7 @@ fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 fobj_t *fcode_new(fenv_t *f, fcode_t c);
 
 #define MKFNAME(x)			fword_ ## x
-#define FCODE(x)			void MKFNAME(x)(fenv_t *f, forth_header_t *w)
+#define FCODE(x)			void MKFNAME(x)(fenv_t *f, fobj_t *w)
 
 #define PUSH(x)				MKFNAME(push)(f, w, x)
 #define PUSHN(n)			MKFNAME(push)(f, w, fnum_new(f, n))
@@ -155,14 +157,16 @@ fobj_t *fcode_new(fenv_t *f, fcode_t c);
 #define FETCH				MKFNAME(fetch)(f, w)
 #define INDEX				MKFNAME(index)(f, w)
 
-void    MKFNAME(push)(fenv_t *f, forth_header_t *w, fobj_t *p);
-fobj_t *MKFNAME(pop)(fenv_t *f, forth_header_t *w);
-fnumber_t MKFNAME(pop_num)(fenv_t *f, forth_header_t *w);
-fint_t  MKFNAME(pop_int)(fenv_t *f, forth_header_t *w);
+void    MKFNAME(push)(fenv_t *f, fobj_t *w, fobj_t *p);
+fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w);
+fnumber_t MKFNAME(pop_num)(fenv_t *f, fobj_t *w);
+fint_t  MKFNAME(pop_int)(fenv_t *f, fobj_t *w);
 typedef union fbody_u {
-    forth_header_t  *word;
+    fobj_t  *word;
     fnumber_t		 n;
 } fbody_t;
+
+typedef struct forth_header_s forth_header_t;
 
 struct forth_header_s {
     char				*name;
@@ -171,9 +175,9 @@ struct forth_header_s {
 
 #define MKHDRNAME(_name)	_name ## _header
 #define FWORD_HEADER(_name, _str)                       \
-    void _name(fenv_t *f, forth_header_t *w);           \
+    void _name(fenv_t *f, fobj_t *w);           \
     forth_header_t MKHDRNAME(_name) = { _str, _name };   \
-    void _name(fenv_t *f, forth_header_t *w)
+    void _name(fenv_t *f, fobj_t *w)
 
 #define FWORD2(_name, _str)                    \
     FWORD_HEADER(MKFNAME(_name), _str)

@@ -8,34 +8,34 @@
 #include "forth.h"
 #include "fobj.h"
 
-fobj_t *MKFNAME(pop)(fenv_t *f, forth_header_t *w)
+fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w)
 {
     return fstack_fetch(f, f->dstack, NULL);
 }
 
-void MKFNAME(push)(fenv_t *f, forth_header_t *w, fobj_t *p)
+void MKFNAME(push)(fenv_t *f, fobj_t *w, fobj_t *p)
 {
     fstack_store(f, f->dstack, NULL, p);
 }
 
-fnumber_t MKFNAME(pop_num)(fenv_t *f, forth_header_t *w)
+fnumber_t MKFNAME(pop_num)(fenv_t *f, fobj_t *w)
 {
     fobj_t *num_obj = POP;
     fassert(f, num_obj->type == FOBJ_NUM, 1, "A number was expected here");
     return num_obj->u.num.n;
 }
 
-fint_t MKFNAME(pop_int)(fenv_t *f, forth_header_t *w)
+fint_t MKFNAME(pop_int)(fenv_t *f, fobj_t *w)
 {
     return (fint_t) MKFNAME(pop_num)(f, w);
 }
 
-fobj_t *MKFNAME(rpop)(fenv_t *f, forth_header_t *w)
+fobj_t *MKFNAME(rpop)(fenv_t *f, fobj_t *w)
 {
     return fstack_fetch(f, f->rstack, NULL);
 }
 
-void MKFNAME(rpush)(fenv_t *f, forth_header_t *w, fobj_t *p)
+void MKFNAME(rpush)(fenv_t *f, fobj_t *w, fobj_t *p)
 {
     fstack_store(f, f->rstack, NULL, p);
 }

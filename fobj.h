@@ -50,6 +50,19 @@ struct findex_s {
     fobj_t		*index;
 };
 
+struct fword_s {
+    fobj_t		*name;
+    fobj_t		*value;
+};
+
+// fcode_t defined in forth.h
+
+struct fdocolon_s {
+    int			 len;
+    int			 len_allocated;
+    fbody_t		*body;
+};
+
 struct fobj_s {
     int				 type;
     union {
@@ -60,7 +73,9 @@ struct fobj_s {
         farray_t	 array;
         fhash_t		 hash;
         fstack_t	 stack;
+        fword_t		 word;
         fcode_t		 code;
+        fdocolon_t	 docolon;
     } u;
 };
 
