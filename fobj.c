@@ -11,13 +11,13 @@
 
 const foptable_t op_table[FOBJ_NUM_TYPES] = {
     { 0 }, // The zeroth entry is INVALID
-    { "number", NULL, NULL, fnum_print, fnum_cmp, NULL, NULL, fnum_add, fnum_sub },
-    { "string", NULL, fstr_free, fstr_print, fstr_cmp, NULL, fstr_fetch, fstr_add, fstr_sub },
-    { "table",  ftable_visit, NULL, ftable_print, NULL, ftable_store, ftable_fetch },
-    { "array",  farray_visit, farray_free, farray_print, NULL, farray_store, farray_fetch },
-    { "hash",   fhash_visit,  fhash_free, fhash_print, NULL, fhash_store, fhash_fetch },
-    { "stack",  fstack_visit, fstack_free, fstack_print, NULL, fstack_store, fstack_fetch },
-    { "index",  findex_visit, NULL, NULL, NULL, NULL, NULL },
+    { "number", NULL, NULL, NULL, fnum_print, fnum_cmp, NULL, NULL, fnum_add, fnum_sub },
+    { "string", NULL, NULL, fstr_free, fstr_print, fstr_cmp, NULL, fstr_fetch, fstr_add, fstr_sub },
+    { "table",  NULL, ftable_visit, NULL, ftable_print, NULL, ftable_store, ftable_fetch },
+    { "array",  NULL, farray_visit, farray_free, farray_print, NULL, farray_store, farray_fetch },
+    { "hash",   NULL, fhash_visit,  fhash_free, fhash_print, NULL, fhash_store, fhash_fetch },
+    { "stack",  NULL, fstack_visit, fstack_free, fstack_print, NULL, fstack_store, fstack_fetch },
+    { "index",  NULL, findex_visit, NULL, NULL, NULL, NULL, NULL },
 };
 
 #define NUM_OBJ_MEM		1024
@@ -143,14 +143,17 @@ void fobj_garbage_collection(fenv_t *f)
 
 void fobj_print(fenv_t *f, fobj_t *p)
 {
-    ASSERT(p);
-    ASSERT(p->type > 0);
-    ASSERT(op_table[p->type].print);
+    if (!p) {
+        printf("(null)");
+    } else {
+        ASSERT(p->type > 0);
+        ASSERT(op_table[p->type].print);
 
 #ifdef DEBUG
-    printf("Object %p: type = %d\n", p, p->type);
+        printf("Object %p: type = %d\n", p, p->type);
 #endif
-    op_table[p->type].print(f, p);
+        op_table[p->type].print(f, p);
+    }
 }
 
 fobj_t *fobj_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
@@ -236,9 +239,3 @@ int fobj_is_index(fenv_t *f, fobj_t *obj)
     }
 }
 
-fobj_t *fcode_new(fenv_t *f, fcode_t c)
-{
-    fobj_t *p = fobj_new(f, FOBJ_CODE);
-    p->u.code = c;
-    return p;
-}

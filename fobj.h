@@ -52,14 +52,7 @@ struct findex_s {
 
 struct fword_s {
     fobj_t		*name;
-    fobj_t		*value;
-};
-
-// fcode_t defined in forth.h
-
-struct fdocolon_s {
-    int			 len;
-    int			 len_allocated;
+    fcode_t		 code;
     fbody_t		*body;
 };
 
@@ -74,13 +67,12 @@ struct fobj_s {
         fhash_t		 hash;
         fstack_t	 stack;
         fword_t		 word;
-        fcode_t		 code;
-        fdocolon_t	 docolon;
     } u;
 };
 
 typedef struct foptable_s {
     const char *type_name;
+    void (*code)(fenv_t *f, fobj_t *p);
     void (*visit)(fenv_t *f, fobj_t *p);
     void (*free)(fenv_t *f, fobj_t *p);
     void (*print)(fenv_t *f, fobj_t *p);

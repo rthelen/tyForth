@@ -5,7 +5,8 @@
 # reversed. (See the file COPYRIGHT for details.)
 #
 
-SRC  = forth.c fobj.c fnum.c fstr.c ftable.c farray.c fhash.c fstack.c fprimitives.c
+SRC  = forth.c fobj.c fnum.c fstr.c ftable.c farray.c fhash.c
+SRC += fstack.c fparse.c fcode.c
 OBJS = $(patsubst %.c, objects/%.o, ${SRC})
 INCL = forth.h fobj.h
 

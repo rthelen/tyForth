@@ -88,6 +88,11 @@ fobj_t *farray_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
     farray_t *a = &addr->u.array;
     fnumber_t n = index->u.num.n;
 
-    return *farray_num_index(f, a, n);
+    fobj_t **valp = farray_num_index(f, a, n);
+    if (valp) {
+        return *valp;
+    } else {
+        return NULL;
+    }
 }
 

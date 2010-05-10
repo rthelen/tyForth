@@ -34,9 +34,7 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_STACK		6
 #define FOBJ_INDEX		7
 #define FOBJ_WORD		8
-#define FOBJ_CODE		9
-#define FOBJ_DOCOLON	10
-#define FOBJ_NUM_TYPES	11
+#define FOBJ_NUM_TYPES	13
 
 typedef long double fnumber_t;
 typedef int32_t fint_t;
@@ -51,6 +49,7 @@ typedef struct fword_s fword_t;
 typedef struct fdocolon_s fdocolon_t;
 
 typedef void (*fcode_t)(fenv_t *f, fobj_t *w);
+typedef union fbody_u fbody_t;
 
 struct fenv_s {
     fobj_mem_t		*obj_memory;
@@ -61,6 +60,8 @@ struct fenv_s {
 
     fobj_t			*input_str;
     int				 input_offset;
+
+    fbody_t			*ip;
 };
 
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
@@ -134,9 +135,12 @@ void    fhash_visit(fenv_t *f, fobj_t *a);
 void    fhash_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
-fobj_t *fcode_new(fenv_t *f, fcode_t c);
+fobj_t *fvar_new(fenv_t *f, fobj_t *name, fobj_t *value);
+fobj_t *fcons_new(fenv_t *f, fobj_t *name, fobj_t *value);
 
-#define MKFNAME(x)			fword_ ## x
+void    fcode_new_primitive(fenv_t *f, fobj_t *name, fcode_t code);
+
+#define MKFNAME(x)			fcode_ ## x
 #define FCODE(x)			void MKFNAME(x)(fenv_t *f, fobj_t *w)
 
 #define PUSH(x)				MKFNAME(push)(f, w, x)
@@ -145,6 +149,10 @@ fobj_t *fcode_new(fenv_t *f, fcode_t c);
 #define POP					MKFNAME(pop)(f, w)
 #define POPN				MKFNAME(pop_num)(f, w)
 #define POPI				MKFNAME(pop_int)(f, w)
+
+#define RPOP				MKFNAME(rpop)(f, w)
+#define RPUSH(x)			MKFNAME(rpush)(f, w, x)
+
 #define OVER				MKFNAME(over)(f, w)
 #define SWAP				MKFNAME(swap)(f, w)
 #define DUP					MKFNAME(dup)(f, w)
@@ -161,14 +169,12 @@ void    MKFNAME(push)(fenv_t *f, fobj_t *w, fobj_t *p);
 fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w);
 fnumber_t MKFNAME(pop_num)(fenv_t *f, fobj_t *w);
 fint_t  MKFNAME(pop_int)(fenv_t *f, fobj_t *w);
-typedef union fbody_u {
-    fobj_t  *word;
+union fbody_u {
+    fobj_t			*word;
     fnumber_t		 n;
-} fbody_t;
+};
 
-typedef struct forth_header_s forth_header_t;
-
-struct forth_header_s {
+struct fheader_s {
     char				*name;
     fcode_t				 code;
 };
@@ -176,7 +182,7 @@ struct forth_header_s {
 #define MKHDRNAME(_name)	_name ## _header
 #define FWORD_HEADER(_name, _str)                       \
     void _name(fenv_t *f, fobj_t *w);           \
-    forth_header_t MKHDRNAME(_name) = { _str, _name };   \
+    fheader_t MKHDRNAME(_name) = { _str, _name };   \
     void _name(fenv_t *f, fobj_t *w)
 
 #define FWORD2(_name, _str)                    \
@@ -192,9 +198,19 @@ struct forth_header_s {
     FWORD_IMM2(_name, # _name)
 
 #define FWORD_DO2(_name, _str)                 \
-    FWORD_HEADER(fword_do_ ## _name, _str)
+    FWORD_HEADER(fcode_do_ ## _name, _str)
 
 #define FWORD_DO(_name)                        \
     FWORD_DO2(_name, "(" # _name ")")
+
+/**********************************************************
+ *
+ * Input Processing Routines
+ *
+ **********************************************************/
+
+int  fparse_token(fenv_t *f, fobj_t **token_str);
+void fparse_do_token(fenv_t *f, fobj_t *token);
+
 
 #endif /* __FORTH_H__ */
