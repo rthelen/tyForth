@@ -8,7 +8,7 @@ my $gen_type = shift;
 while (<>) {
     chomp;
     next if !m/^FWORD/;
-    next if m/^FWORD_DO/;
+    s/^FWORD_DO\(/(do_/;
     s/^FWORD_//;
     s/^FWORD//;
     if (m/^IMM/) { push(@imm_words, $_); }

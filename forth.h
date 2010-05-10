@@ -139,69 +139,7 @@ fobj_t *fvar_new(fenv_t *f, fobj_t *name, fobj_t *value);
 fobj_t *fcons_new(fenv_t *f, fobj_t *name, fobj_t *value);
 
 void    fcode_new_primitive(fenv_t *f, fobj_t *name, fcode_t code);
-
-#define MKFNAME(x)			fcode_ ## x
-#define FCODE(x)			void MKFNAME(x)(fenv_t *f, fobj_t *w)
-
-#define PUSH(x)				MKFNAME(push)(f, w, x)
-#define PUSHN(n)			MKFNAME(push)(f, w, fnum_new(f, n))
-#define PUSHS(s)			MKFNAME(push)(f, w, fstr_new(f, s))
-#define POP					MKFNAME(pop)(f, w)
-#define POPN				MKFNAME(pop_num)(f, w)
-#define POPI				MKFNAME(pop_int)(f, w)
-
-#define RPOP				MKFNAME(rpop)(f, w)
-#define RPUSH(x)			MKFNAME(rpush)(f, w, x)
-
-#define OVER				MKFNAME(over)(f, w)
-#define SWAP				MKFNAME(swap)(f, w)
-#define DUP					MKFNAME(dup)(f, w)
-#define DROP				MKFNAME(drop)(f, w)
-#define ADD					MKFNAME(add)(f, w)
-#define SUB					MKFNAME(sub)(f, w)
-#define PRINT				MKFNAME(print)(f, w)
-
-#define STORE				MKFNAME(store)(f, w)
-#define FETCH				MKFNAME(fetch)(f, w)
-#define INDEX				MKFNAME(index)(f, w)
-
-void    MKFNAME(push)(fenv_t *f, fobj_t *w, fobj_t *p);
-fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w);
-fnumber_t MKFNAME(pop_num)(fenv_t *f, fobj_t *w);
-fint_t  MKFNAME(pop_int)(fenv_t *f, fobj_t *w);
-union fbody_u {
-    fobj_t			*word;
-    fnumber_t		 n;
-};
-
-struct fheader_s {
-    char				*name;
-    fcode_t				 code;
-};
-
-#define MKHDRNAME(_name)	_name ## _header
-#define FWORD_HEADER(_name, _str)                       \
-    void _name(fenv_t *f, fobj_t *w);           \
-    fheader_t MKHDRNAME(_name) = { _str, _name };   \
-    void _name(fenv_t *f, fobj_t *w)
-
-#define FWORD2(_name, _str)                    \
-    FWORD_HEADER(MKFNAME(_name), _str)
-
-#define FWORD(_name)                           \
-    FWORD2(_name, # _name)
-
-#define FWORD_IMM2(_name, _str)                \
-    FWORD_HEADER(MKFNAME(_name), _str)
-
-#define FWORD_IMM(_name)                       \
-    FWORD_IMM2(_name, # _name)
-
-#define FWORD_DO2(_name, _str)                 \
-    FWORD_HEADER(fcode_do_ ## _name, _str)
-
-#define FWORD_DO(_name)                        \
-    FWORD_DO2(_name, "(" # _name ")")
+void    fcode_init(fenv_t *f);
 
 /**********************************************************
  *

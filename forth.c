@@ -7,7 +7,6 @@
 
 #include "forth.h"
 #include "fobj.h"
-#include "fwords.h"
 
 void FASSERT(int x, const char *err, const char *file, int line)
 {
@@ -31,37 +30,12 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
     exit(-1);
 }
 
-fheader_t *dictionary_ptrs[] = {
-/*
- * Bring in a list of the FWORDs defined in fprimitives.c and possibly
- * elsewhere.
- */
-
-#include "fwords.c"
-
-    NULL
-};
-
-void add_code_dict(fenv_t *f, fheader_t *h)
-{
-    fcode_new_primitive(f, fstr_new(f, h->name), h->code);
-
-}
-
 static void forth_test_string(const char *string)
 {
     printf("Executing the Forth string: %s\n", string);
 
     fenv_t *f = fenv_new();
-
-    /*
-     * Add the words to the dictionary
-     */
-
-    for (int i = 0; dictionary_ptrs[i]; i++) {
-        add_code_dict(f, dictionary_ptrs[i]);
-    }
-
+    fcode_init(f);
     f->input_str = fstr_new(f, string);
     fobj_t *token;
     do {

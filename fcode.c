@@ -8,9 +8,105 @@
 #include "forth.h"
 #include "fobj.h"
 
+#define MKFNAME(x)			fcode_ ## x
+#define MKHDRNAME(_name)	_name ## _header
+
+#define FWORD_HEADER(_name, _str)                       \
+    void _name(fenv_t *f, fobj_t *w);           \
+    fheader_t MKHDRNAME(_name) = { _str, _name };   \
+    void _name(fenv_t *f, fobj_t *w)
+
+#define FWORD2(_name, _str)                    \
+    FWORD_HEADER(MKFNAME(_name), _str)
+
+#define FWORD(_name)                           \
+    FWORD2(_name, # _name)
+
+#define FWORD_IMM2(_name, _str)                \
+    FWORD_HEADER(MKFNAME(_name), _str)
+
+#define FWORD_IMM(_name)                       \
+    FWORD_IMM2(_name, # _name)
+
+#define FWORD_DO2(_name, _str)                 \
+    FWORD_HEADER(MKFNAME(do_ ## _name), _str)
+
+#define FWORD_DO(_name)                        \
+    FWORD_DO2(_name, "(" # _name ")")
+
+#define FCODE(x)			void MKFNAME(x)(fenv_t *f, fobj_t *w)
+
+#define PUSH(x)				MKFNAME(push)(f, w, x)
+#define PUSHN(n)			MKFNAME(push)(f, w, fnum_new(f, n))
+#define PUSHS(s)			MKFNAME(push)(f, w, fstr_new(f, s))
+#define POP					MKFNAME(pop)(f, w)
+#define POPN				MKFNAME(pop_num)(f, w)
+#define POPI				MKFNAME(pop_int)(f, w)
+
+#define RPOP				MKFNAME(rpop)(f, w)
+#define RPUSH(x)			MKFNAME(rpush)(f, w, x)
+
+#define OVER				MKFNAME(over)(f, w)
+#define SWAP				MKFNAME(swap)(f, w)
+#define DUP					MKFNAME(dup)(f, w)
+#define DROP				MKFNAME(drop)(f, w)
+#define ADD					MKFNAME(add)(f, w)
+#define SUB					MKFNAME(sub)(f, w)
+#define PRINT				MKFNAME(print)(f, w)
+
+#define STORE				MKFNAME(store)(f, w)
+#define FETCH				MKFNAME(fetch)(f, w)
+#define INDEX				MKFNAME(index)(f, w)
+
+void    MKFNAME(push)(fenv_t *f, fobj_t *w, fobj_t *p);
+fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w);
+fnumber_t MKFNAME(pop_num)(fenv_t *f, fobj_t *w);
+fint_t  MKFNAME(pop_int)(fenv_t *f, fobj_t *w);
+union fbody_u {
+    fobj_t			*word;
+    fnumber_t		 n;
+};
+
+struct fheader_s {
+    char				*name;
+    fcode_t				 code;
+};
+
+
+/*
+ * Include an auto-generated file with the prototypes for all of the
+ * functions in this file.
+ */
+
+#include "fwords.h"
+
+
 /*
  * This file contains all the primitives of the system.
  */
+
+fheader_t *fcode_primitives_ptrs[] = {
+	/*
+     * Bring in an auto-generated list of the FWORDs defined in
+     * fprimitives.c and possibly elsewhere.
+     */
+
+	#include "fwords.c"
+
+    NULL
+};
+
+void fcode_init(fenv_t *f)
+{
+    /*
+     * Add the words to the dictionary
+     */
+    fheader_t *p;
+
+    for (int i = 0; (p = fcode_primitives_ptrs[i]); i++) {
+        fcode_new_primitive(f, fstr_new(f, p->name), p->code);
+    }
+}
 
 void fcode_new_primitive(fenv_t *f, fobj_t*name, fcode_t code)
 {
@@ -18,7 +114,17 @@ void fcode_new_primitive(fenv_t *f, fobj_t*name, fcode_t code)
     fword_t *w = &word->u.word;
     w->name = name;
     w->code = code;
-    w->body = NULL;
+    w->u.body = NULL;
+    ftable_store(f, f->words, name, word);
+}
+
+void fcode_new_var(fenv_t *f, fobj_t *name, fobj_t *value)
+{
+    fobj_t *word = fobj_new(f, FOBJ_WORD);
+    fword_t *w = &word->u.word;
+    w->name = name;
+    w->code = fcode_do_constant_header.code;
+    w->u.value = value;
     ftable_store(f, f->words, name, word);
 }
 
@@ -170,6 +276,16 @@ FWORD2(index, "]")
 FWORD2(one, "1")
 {
     PUSHN(1);
+}
+
+FWORD_DO(var)
+{
+    PUSH(w);  // Use @ and ! to read or modify w's u.value field.
+}
+
+FWORD_DO(constant)
+{
+    PUSH(w->u.word.u.value);
 }
 
 FWORD2(mkvar, "var")

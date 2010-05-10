@@ -51,9 +51,12 @@ struct findex_s {
 };
 
 struct fword_s {
-    fobj_t		*name;
-    fcode_t		 code;
-    fbody_t		*body;
+    fobj_t			*name;
+    fcode_t			 code;
+    union {
+        fbody_t		*body;
+        fobj_t		*value;
+    } u;
 };
 
 struct fobj_s {

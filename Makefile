@@ -23,10 +23,10 @@ forth: clean ${OBJS} ${INCL}
 
 objects/forth.o: fwords.c fwords.h
 
-fwords.h: fprimitives.c forth.h gen_fword_inc.pl
+fwords.h: fcode.c forth.h gen_fword_inc.pl
 	./gen_fword_inc.pl -h < $< > $@
 
-fwords.c: fprimitives.c forth.h gen_fword_inc.pl
+fwords.c: fcode.c forth.h gen_fword_inc.pl
 	./gen_fword_inc.pl -c < $< > $@
 
 .PHONY: objects
