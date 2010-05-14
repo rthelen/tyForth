@@ -96,6 +96,22 @@ fheader_t *fcode_primitives_ptrs[] = {
     NULL
 };
 
+static void fcode_new(fenv_t *f, fobj_t*name, fcode_t code, fbody_t *body, fobj_t *value)
+{
+    fobj_t *word = fobj_new(f, FOBJ_WORD);
+    fword_t *w = &word->u.word;
+    w->name = name;
+    w->code = code;
+    if (body) {
+        w->u.body = body;
+    } else if (value) {
+        w->u.value = value;
+    } else {
+        w->u.body = NULL;  // Default
+    }
+    ftable_store(f, f->words, name, word);
+}
+
 void fcode_init(fenv_t *f)
 {
     /*
@@ -104,28 +120,24 @@ void fcode_init(fenv_t *f)
     fheader_t *p;
 
     for (int i = 0; (p = fcode_primitives_ptrs[i]); i++) {
-        fcode_new_primitive(f, fstr_new(f, p->name), p->code);
+        fobj_t *name = fstr_new(f, p->name);
+        fcode_new(f, name, p->code, NULL, NULL);
     }
-}
-
-void fcode_new_primitive(fenv_t *f, fobj_t*name, fcode_t code)
-{
-    fobj_t *word = fobj_new(f, FOBJ_WORD);
-    fword_t *w = &word->u.word;
-    w->name = name;
-    w->code = code;
-    w->u.body = NULL;
-    ftable_store(f, f->words, name, word);
 }
 
 void fcode_new_var(fenv_t *f, fobj_t *name, fobj_t *value)
 {
-    fobj_t *word = fobj_new(f, FOBJ_WORD);
-    fword_t *w = &word->u.word;
-    w->name = name;
-    w->code = fcode_do_constant_header.code;
-    w->u.value = value;
-    ftable_store(f, f->words, name, word);
+    fcode_new(f, name, fcode_do_var_header.code, NULL, value);
+}
+
+void fcode_new_constant(fenv_t *f, fobj_t *name, fobj_t *value)
+{
+    fcode_new(f, name, fcode_do_constant_header.code, NULL, value);
+}
+
+void fcode_new_word(fenv_t *f, fobj_t *name, fbody_t *body)
+{
+    fcode_new(f, name, fcode_do_colon_header.code, body, NULL);
 }
 
 fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w)
@@ -281,6 +293,40 @@ FWORD2(one, "1")
 FWORD_DO(var)
 {
     PUSH(w);  // Use @ and ! to read or modify w's u.value field.
+}
+
+#define RP		(f->rstack->u.stack.sp)
+#define IP		(f->ip)
+#define CALL(w)	  ((w)->u.word.code(f, w))
+#define NEST      RPUSH(IP)
+#define UNNEST    (IP = RPOP)
+
+FWORD_DO(exit)
+{
+    fobj_t *wp = RPOP;
+    fassert(f, wp->type == FOBJ_CALL, 1, "the return stack does not contain a return address for an exit");
+
+    f->running = wp->u.call.w;
+    f->ip = wp->u.call.ip;
+}
+
+FWORD_DO(colon)
+{
+    int rp_saved = RP;
+    fobj_t *wp = fobj_new(f, FOBJ_CALL);
+
+    IP = w->u.word.u.body;
+
+    wp->u.call.w = f->running;;
+    wp->u.call.ip = IP;
+    RPUSH(wp);
+    f->running = w;
+
+    do {
+        fobj_t *nw = IP++ -> word;
+        f->running->u.call.ip = f->ip;
+        CALL(nw);
+    } while (RP < rp_saved);
 }
 
 FWORD_DO(constant)

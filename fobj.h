@@ -14,6 +14,7 @@ typedef struct findex_s findex_t;
 typedef struct farray_s farray_t;
 typedef struct fhash_s fhash_t;
 typedef struct fstack_s fstack_t;
+typedef struct fcall_s fcall_t;
 
 struct fnum_s {
     fnumber_t		n;
@@ -59,6 +60,11 @@ struct fword_s {
     } u;
 };
 
+struct fcall_s {
+    fobj_t			*w;
+    fbody_t			*ip;
+};
+
 struct fobj_s {
     int				 type;
     union {
@@ -70,6 +76,7 @@ struct fobj_s {
         fhash_t		 hash;
         fstack_t	 stack;
         fword_t		 word;
+        fcall_t		 call;
     } u;
 };
 

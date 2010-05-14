@@ -34,7 +34,8 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_STACK		6
 #define FOBJ_INDEX		7
 #define FOBJ_WORD		8
-#define FOBJ_NUM_TYPES	13
+#define FOBJ_CALL		9
+#define FOBJ_NUM_TYPES	10
 
 typedef long double fnumber_t;
 typedef int32_t fint_t;
@@ -61,6 +62,7 @@ struct fenv_s {
     fobj_t			*input_str;
     int				 input_offset;
 
+    fobj_t			*running;
     fbody_t			*ip;
 };
 
@@ -138,8 +140,8 @@ fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 fobj_t *fvar_new(fenv_t *f, fobj_t *name, fobj_t *value);
 fobj_t *fcons_new(fenv_t *f, fobj_t *name, fobj_t *value);
 
-void    fcode_new_primitive(fenv_t *f, fobj_t *name, fcode_t code);
 void    fcode_init(fenv_t *f);
+void    fcode_new_word(fenv_t *f, fobj_t *name, fbody_t *body);
 
 /**********************************************************
  *

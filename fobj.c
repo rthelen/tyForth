@@ -24,14 +24,17 @@ const foptable_t op_table[FOBJ_NUM_TYPES] = {
 
 struct fobj_mem_s {
     uint32_t	inuse_bitmap[NUM_OBJ_MEM / 32];
+    int			num_free_objs;
+    uint16_t	next_free[NUM_OBJ_MEM];
     fobj_t		objs[NUM_OBJ_MEM];
 };
 
 static int	fobj_obj_mem_index(fenv_t *f, fobj_t *p)
 {
-    if (p >= &f->obj_memory->objs[0] &&
-        p <  &f->obj_memory->objs[NUM_OBJ_MEM]) {
-        return p - &f->obj_memory->objs[0];
+    fobj_mem_t *m = f->obj_memory;
+    if (p >= &m->objs[0] &&
+        p <  &m->objs[NUM_OBJ_MEM]) {
+        return p - &m->objs[0];
     }
     fassert(f, 0, 1, "Only 1024 objects currently supported");
     return -1;
@@ -41,11 +44,12 @@ static int fobj_obj_index_used(fenv_t *f, int idx)
 {
     int bit = 1 << (idx & 31);
     int bitmap_i = idx >> 5;
+    fobj_mem_t *m = f->obj_memory;
 
-    if (f->obj_memory->inuse_bitmap[bitmap_i] & bit) {
+    if (m->inuse_bitmap[bitmap_i] & bit) {
         return 1;
     } else {
-        f->obj_memory->inuse_bitmap[bitmap_i] |= bit;
+        m->inuse_bitmap[bitmap_i] |= bit;
         return 0;
     }
 }
@@ -56,11 +60,21 @@ static int fobj_obj_mem_used(fenv_t *f, fobj_t *p)
     return fobj_obj_index_used(f, i);
 }
 
+static void fobj_obj_mem_init(fenv_t *f)
+{
+    f->obj_memory = calloc(1, sizeof(*f->obj_memory));
+    fobj_mem_t *m = f->obj_memory;
+    m->num_free_objs = NUM_OBJ_MEM;
+    for (int i = 0; i < NUM_OBJ_MEM; i++) {
+        m->next_free[i] = i;
+    }
+}
+
 fenv_t *fenv_new(void)
 {
     fenv_t *f = calloc(1, sizeof(*f));
 
-    f->obj_memory = calloc(1, sizeof(*f->obj_memory));
+    fobj_obj_mem_init(f);
     f->dstack = fstack_new(f);
     f->rstack = fstack_new(f);
     f->words  = ftable_new(f);
@@ -82,16 +96,15 @@ void fenv_free(fenv_t *f)
 
 fobj_t *fobj_new(fenv_t *f, int type)
 {
-    for (int i = 0; i < NUM_OBJ_MEM; i++) {
-        if (!fobj_obj_index_used(f, i)) {
-            fobj_t *p = &f->obj_memory->objs[i];
-            p->type = type;
-            return p;
-        }
-    }
+    fassert(f, f->obj_memory->num_free_objs > 0, 1, "out of memory allocating a new fobj");
 
-    fassert(f, 0, 1, "out of memory allocating a new fobj");
-    return NULL;
+    fobj_mem_t *m = f->obj_memory;
+    int i = --(m->num_free_objs);
+    int pi = m->next_free[i];
+    fobj_t *p = &m->objs[pi];
+    
+    p->type = type;
+    return p;
 }
 
 void fobj_visit(fenv_t *f, fobj_t *p)
@@ -110,35 +123,40 @@ void fobj_garbage_collection(fenv_t *f)
     // Copy the in-use bitmap
     // visit f->dstack and f->rstack
     // Determine which objects are no longer used and call their free routine
-    uint32_t *copy_inuse_bitmap = calloc(1, NUM_OBJ_MEM / 32 * sizeof(uint32_t));
-    for (int i = 0; i < NUM_OBJ_MEM / 32; i++) {
-        copy_inuse_bitmap[i] = f->obj_memory->inuse_bitmap[i];
-        f->obj_memory->inuse_bitmap[i] = 0;
-    }
+    uint32_t copy_inuse_bitmap[NUM_OBJ_MEM / 32];
+    int n = NUM_OBJ_MEM / 32;
+    int nbytes = n * sizeof(uint32_t);
+    fobj_mem_t *m = f->obj_memory;
+
+    bcopy(m->inuse_bitmap, copy_inuse_bitmap, nbytes);
+    bzero(m->inuse_bitmap, nbytes);
 
     fobj_visit(f, f->dstack);
     fobj_visit(f, f->rstack);
 
-    fobj_t *p = &f->obj_memory->objs[0];
-    for (int i = 0; i < NUM_OBJ_MEM / 32; i++) {
-        for (uint32_t bit = 1; bit; bit <<= 1, p++) {
-            if (f->obj_memory->inuse_bitmap[i] & bit) {
-                ASSERT(copy_inuse_bitmap[i] & bit);
-            }
-            if (f->obj_memory->inuse_bitmap[i] & bit) {
+    for (int i = 0; i < n; i++) {
+        uint32_t free = ~copy_inuse_bitmap[i] & m->inuse_bitmap[i];
+        if (!free) {
+            continue;
+        }
+
+        fobj_t *p = &m->objs[n];
+        for (uint32_t bit = 1; free && bit; bit <<= 1, p++) {
+            if (!(free & bit)) {
                 continue;
             }
-            if (!(copy_inuse_bitmap[i] & bit)) {
-                continue;
-            }
+
+            free ^= bit;
             if (op_table[p->type].free) {
                 op_table[p->type].free(f, p);
             }
             bzero(p, sizeof(*p));
+            
+            int j = m->num_free_objs++;
+            int pj = p - &m->objs[0];
+            m->next_free[j] = pj;
         }
     }
-    ASSERT(p == &f->obj_memory->objs[NUM_OBJ_MEM]);
-    free(copy_inuse_bitmap);
 }
 
 void fobj_print(fenv_t *f, fobj_t *p)
