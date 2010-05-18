@@ -24,8 +24,7 @@ if ($gen_type eq "-c") {
     print "/* C code: References to the fword_xyz_header's */\n";
     while ($#fwords >= 0) {
         $_ = pop @fwords;
-        s/^\(([^,)]+).*$/fcode_$1_header/;
-        s/^2\(([^,)]+).*$/fcode_$1_header/;
+        s/^2?\(([^,)]+).*$/fcode_$1_header/;
         print "    &$_,\n";
     }
 
@@ -36,13 +35,19 @@ if ($gen_type eq "-c") {
     }
 } else {
     #
-    # Create the header list of fcpde (which are defined in fprimitives.c)
+    # Create the header list of fcpde (which are defined in fcode.c)
     # and which need to be available in forth.c.
     #
     print "/* Header code: Declarations for the fcode_xyz()'s */\n";
     while ($#fwords >= 0) {
         $_ = pop @fwords;
         s/^2?\(([^,)]+).*$/fheader_t fcode_$1_header;/;
+        print "$_\n";
+    }
+
+    while ($#imm_words >= 0) {
+        $_ = pop @imm_words;
+        s/^IMM2?\(([^,)]+).*$/fheader_t fcode_$1_header;/;
         print "$_\n";
     }
 }

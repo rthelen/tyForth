@@ -133,6 +133,7 @@ void fobj_garbage_collection(fenv_t *f)
 
     fobj_visit(f, f->dstack);
     fobj_visit(f, f->rstack);
+    fobj_visit(f, f->current_compiling); // during colon definitions
 
     for (int i = 0; i < n; i++) {
         uint32_t free = ~copy_inuse_bitmap[i] & m->inuse_bitmap[i];
@@ -257,3 +258,11 @@ int fobj_is_index(fenv_t *f, fobj_t *obj)
     }
 }
 
+fobj_t *fstate_new(fenv_t *f, int state, int offset)
+{
+    fobj_t *p = fobj_new(f, FOBJ_STATE);
+    fstate_t *s = &p->u.state;
+    s->state = state;
+    s->offset = offset;
+    return p;
+}

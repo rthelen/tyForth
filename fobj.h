@@ -15,6 +15,7 @@ typedef struct farray_s farray_t;
 typedef struct fhash_s fhash_t;
 typedef struct fstack_s fstack_t;
 typedef struct fcall_s fcall_t;
+typedef struct fstate_s fstate_t;
 
 struct fnum_s {
     fnumber_t		n;
@@ -54,6 +55,10 @@ struct findex_s {
 struct fword_s {
     fobj_t			*name;
     fcode_t			 code;
+    int				 immediate;
+    int				 body_len;
+    int				 body_allocated;
+    int				 body_offset;
     union {
         fbody_t		*body;
         fobj_t		*value;
@@ -63,6 +68,16 @@ struct fword_s {
 struct fcall_s {
     fobj_t			*w;
     fbody_t			*ip;
+};
+
+struct fstate_s {
+    int				 state;
+    int				 offset;
+};
+
+struct floop_s {
+    int				 limit;
+    int				 index;
 };
 
 struct fobj_s {
@@ -77,6 +92,8 @@ struct fobj_s {
         fstack_t	 stack;
         fword_t		 word;
         fcall_t		 call;
+        fstate_t	 state;
+        floop_t		 loop;
     } u;
 };
 

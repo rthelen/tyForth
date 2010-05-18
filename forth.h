@@ -35,7 +35,9 @@ void FASSERT(int x, const char *err, const char *file, int line);
 #define FOBJ_INDEX		7
 #define FOBJ_WORD		8
 #define FOBJ_CALL		9
-#define FOBJ_NUM_TYPES	10
+#define FOBJ_STATE		10
+#define FOBJ_LOOP		11
+#define FOBJ_NUM_TYPES	12
 
 typedef long double fnumber_t;
 typedef int32_t fint_t;
@@ -44,10 +46,9 @@ typedef uint32_t fuint_t;
 typedef struct fobj_s fobj_t;
 typedef struct ftable_s ftable_t;
 typedef struct fobj_mem_s fobj_mem_t;
-typedef struct fheader_s fheader_t;
 typedef struct fenv_s fenv_t;
 typedef struct fword_s fword_t;
-typedef struct fdocolon_s fdocolon_t;
+typedef struct floop_s floop_t;
 
 typedef void (*fcode_t)(fenv_t *f, fobj_t *w);
 typedef union fbody_u fbody_t;
@@ -64,6 +65,12 @@ struct fenv_s {
 
     fobj_t			*running;
     fbody_t			*ip;
+
+    /*
+     * Compiling code.
+     */
+    int				 in_colon;
+    fobj_t			*current_compiling;
 };
 
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
@@ -137,11 +144,12 @@ void    fhash_visit(fenv_t *f, fobj_t *a);
 void    fhash_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 
-fobj_t *fvar_new(fenv_t *f, fobj_t *name, fobj_t *value);
-fobj_t *fcons_new(fenv_t *f, fobj_t *name, fobj_t *value);
-
 void    fcode_init(fenv_t *f);
 void    fcode_new_word(fenv_t *f, fobj_t *name, fbody_t *body);
+void fcode_handle_token(fenv_t *f, fobj_t *token);
+void fcode_compile_string(fenv_t *f, const char *string);
+
+fobj_t *fstate_new(fenv_t *f, int state, int offset);
 
 /**********************************************************
  *
@@ -149,6 +157,7 @@ void    fcode_new_word(fenv_t *f, fobj_t *name, fbody_t *body);
  *
  **********************************************************/
 
+int fparse_token_to_number(fenv_t *f, fobj_t *token, fnumber_t *n);
 int  fparse_token(fenv_t *f, fobj_t **token_str);
 void fparse_do_token(fenv_t *f, fobj_t *token);
 

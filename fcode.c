@@ -8,60 +8,65 @@
 #include "forth.h"
 #include "fobj.h"
 
+typedef struct fheader_s fheader_t;
+
 #define MKFNAME(x)			fcode_ ## x
 #define MKHDRNAME(_name)	_name ## _header
 
-#define FWORD_HEADER(_name, _str)                       \
+#define FWORD_HEADER(_name, _str, _imm)              \
     void _name(fenv_t *f, fobj_t *w);           \
-    fheader_t MKHDRNAME(_name) = { _str, _name };   \
+    fheader_t MKHDRNAME(_name) = { _str, _name, _imm };  \
     void _name(fenv_t *f, fobj_t *w)
 
 #define FWORD2(_name, _str)                    \
-    FWORD_HEADER(MKFNAME(_name), _str)
+    FWORD_HEADER(MKFNAME(_name), _str, 0)
 
 #define FWORD(_name)                           \
     FWORD2(_name, # _name)
 
 #define FWORD_IMM2(_name, _str)                \
-    FWORD_HEADER(MKFNAME(_name), _str)
+    FWORD_HEADER(MKFNAME(_name), _str, 1)
 
 #define FWORD_IMM(_name)                       \
     FWORD_IMM2(_name, # _name)
 
 #define FWORD_DO2(_name, _str)                 \
-    FWORD_HEADER(MKFNAME(do_ ## _name), _str)
+    FWORD_HEADER(MKFNAME(do_ ## _name), _str, 0)
 
 #define FWORD_DO(_name)                        \
     FWORD_DO2(_name, "(" # _name ")")
 
 #define FCODE(x)			void MKFNAME(x)(fenv_t *f, fobj_t *w)
 
-#define PUSH(x)				MKFNAME(push)(f, w, x)
-#define PUSHN(n)			MKFNAME(push)(f, w, fnum_new(f, n))
-#define PUSHS(s)			MKFNAME(push)(f, w, fstr_new(f, s))
-#define POP					MKFNAME(pop)(f, w)
-#define POPN				MKFNAME(pop_num)(f, w)
-#define POPI				MKFNAME(pop_int)(f, w)
+#define DEPTH				(f->dstack->u.stack.sp)
+#define RDEPTH				(f->rstack->u.stack.sp)
 
-#define RPOP				MKFNAME(rpop)(f, w)
-#define RPUSH(x)			MKFNAME(rpush)(f, w, x)
+#define PUSH(x)				MKFNAME(push)(f, x)
+#define PUSHN(n)			MKFNAME(push)(f, fnum_new(f, n))
+#define PUSHS(s)			MKFNAME(push)(f, fstr_new(f, s))
+#define POP					MKFNAME(pop)(f)
+#define POPN				MKFNAME(pop_num)(f)
+#define POPI				MKFNAME(pop_int)(f)
 
-#define OVER				MKFNAME(over)(f, w)
-#define SWAP				MKFNAME(swap)(f, w)
-#define DUP					MKFNAME(dup)(f, w)
-#define DROP				MKFNAME(drop)(f, w)
-#define ADD					MKFNAME(add)(f, w)
-#define SUB					MKFNAME(sub)(f, w)
+#define RPOP				MKFNAME(rpop)(f)
+#define RPUSH(x)			MKFNAME(rpush)(f, x)
+
+#define OVER				MKFNAME(over)(f, NULL)
+#define SWAP				MKFNAME(swap)(f, NULL)
+#define DUP					MKFNAME(dup)(f, NULL)
+#define DROP				MKFNAME(drop)(f, NULL)
+#define ADD					MKFNAME(add)(f, NULL)
+#define SUB					MKFNAME(sub)(f, NULL)
+
 #define PRINT				MKFNAME(print)(f, w)
-
 #define STORE				MKFNAME(store)(f, w)
 #define FETCH				MKFNAME(fetch)(f, w)
 #define INDEX				MKFNAME(index)(f, w)
 
-void    MKFNAME(push)(fenv_t *f, fobj_t *w, fobj_t *p);
-fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w);
-fnumber_t MKFNAME(pop_num)(fenv_t *f, fobj_t *w);
-fint_t  MKFNAME(pop_int)(fenv_t *f, fobj_t *w);
+void    MKFNAME(push)(fenv_t *f, fobj_t *p);
+fobj_t *MKFNAME(pop)(fenv_t *f);
+fnumber_t MKFNAME(pop_num)(fenv_t *f);
+fint_t  MKFNAME(pop_int)(fenv_t *f);
 union fbody_u {
     fobj_t			*word;
     fnumber_t		 n;
@@ -70,6 +75,7 @@ union fbody_u {
 struct fheader_s {
     char				*name;
     fcode_t				 code;
+    int					 immediate;
 };
 
 
@@ -96,12 +102,22 @@ fheader_t *fcode_primitives_ptrs[] = {
     NULL
 };
 
-static void fcode_new(fenv_t *f, fobj_t*name, fcode_t code, fbody_t *body, fobj_t *value)
+static fobj_t *fcode_new(fenv_t *f,
+                         fobj_t*name,
+                         fcode_t code,
+                         int immediate,
+                         fbody_t *body,
+                         fobj_t *value)
 {
     fobj_t *word = fobj_new(f, FOBJ_WORD);
     fword_t *w = &word->u.word;
     w->name = name;
     w->code = code;
+    w->immediate = immediate;
+    w->body_len = 0;
+    w->body_allocated = 0;
+    w->body_offset = 0;
+
     if (body) {
         w->u.body = body;
     } else if (value) {
@@ -109,7 +125,25 @@ static void fcode_new(fenv_t *f, fobj_t*name, fcode_t code, fbody_t *body, fobj_
     } else {
         w->u.body = NULL;  // Default
     }
-    ftable_store(f, f->words, name, word);
+
+    return word;
+}
+
+static void fcode_install(fenv_t *f, fobj_t *word)
+{
+    ftable_store(f, f->words, word->u.word.name, word);
+}
+    
+
+fobj_t *do_zbranch;
+fobj_t *do_branch;
+fobj_t *do_do;
+fobj_t *do_loop;
+fobj_t *do_exit;
+
+static fobj_t *fcode_lookup_word(fenv_t *f, char *name)
+{
+    return ftable_fetch(f, f->words, fstr_new(f, name));
 }
 
 void fcode_init(fenv_t *f)
@@ -121,53 +155,61 @@ void fcode_init(fenv_t *f)
 
     for (int i = 0; (p = fcode_primitives_ptrs[i]); i++) {
         fobj_t *name = fstr_new(f, p->name);
-        fcode_new(f, name, p->code, NULL, NULL);
+        fcode_install(f, fcode_new(f, name, p->code, p->immediate, NULL, NULL));
     }
+
+    f->current_compiling = NULL;
+
+    do_zbranch = fcode_lookup_word(f, "(zbranch)");
+    do_branch  = fcode_lookup_word(f, "(branch)");
+    do_do  = fcode_lookup_word(f, "(do)");
+    do_loop  = fcode_lookup_word(f, "(loop)");
+    do_exit = fcode_lookup_word(f, "(exit)");
 }
 
 void fcode_new_var(fenv_t *f, fobj_t *name, fobj_t *value)
 {
-    fcode_new(f, name, fcode_do_var_header.code, NULL, value);
+    fcode_install(f, fcode_new(f, name, fcode_do_var_header.code, 0, NULL, value));
 }
 
 void fcode_new_constant(fenv_t *f, fobj_t *name, fobj_t *value)
 {
-    fcode_new(f, name, fcode_do_constant_header.code, NULL, value);
+    fcode_install(f, fcode_new(f, name, fcode_do_constant_header.code, 0, NULL, value));
 }
 
 void fcode_new_word(fenv_t *f, fobj_t *name, fbody_t *body)
 {
-    fcode_new(f, name, fcode_do_colon_header.code, body, NULL);
+    fcode_install(f, fcode_new(f, name, fcode_do_colon_header.code, 0, body, NULL));
 }
 
-fobj_t *MKFNAME(pop)(fenv_t *f, fobj_t *w)
+fobj_t *MKFNAME(pop)(fenv_t *f)
 {
     return fstack_fetch(f, f->dstack, NULL);
 }
 
-void MKFNAME(push)(fenv_t *f, fobj_t *w, fobj_t *p)
+void MKFNAME(push)(fenv_t *f, fobj_t *p)
 {
     fstack_store(f, f->dstack, NULL, p);
 }
 
-fnumber_t MKFNAME(pop_num)(fenv_t *f, fobj_t *w)
+fnumber_t MKFNAME(pop_num)(fenv_t *f)
 {
     fobj_t *num_obj = POP;
     fassert(f, num_obj->type == FOBJ_NUM, 1, "A number was expected here");
     return num_obj->u.num.n;
 }
 
-fint_t MKFNAME(pop_int)(fenv_t *f, fobj_t *w)
+fint_t MKFNAME(pop_int)(fenv_t *f)
 {
-    return (fint_t) MKFNAME(pop_num)(f, w);
+    return (fint_t) MKFNAME(pop_num)(f);
 }
 
-fobj_t *MKFNAME(rpop)(fenv_t *f, fobj_t *w)
+fobj_t *MKFNAME(rpop)(fenv_t *f)
 {
     return fstack_fetch(f, f->rstack, NULL);
 }
 
-void MKFNAME(rpush)(fenv_t *f, fobj_t *w, fobj_t *p)
+void MKFNAME(rpush)(fenv_t *f, fobj_t *p)
 {
     fstack_store(f, f->rstack, NULL, p);
 }
@@ -290,6 +332,58 @@ FWORD2(one, "1")
     PUSHN(1);
 }
 
+/*
+ **********************************************************
+ *
+ * Compiling Words
+ *
+ **********************************************************
+ **/
+
+#define CURRENT		(&f->current_compiling->u.word)
+
+static void forth_compile_alloc(fenv_t *f)
+{
+    fword_t *w = CURRENT;
+
+    if (w->body_offset < w->body_allocated) {
+        return;
+    }
+
+    w->body_allocated += 64;  // Arbitrary
+    w->u.body = realloc(w->u.body, sizeof (*w->u.body) * w->body_allocated);
+}
+
+static void forth_compile_word(fenv_t *f, fobj_t *c)
+{
+    fword_t *w = CURRENT;
+
+    forth_compile_alloc(f);
+    w->u.body[w->body_offset++].word = c;
+}
+
+static void forth_compile_cons(fenv_t *f, fnumber_t n)
+{
+    fword_t *w = CURRENT;
+    fobj_t *cons = fnum_new(f, n);
+    PUSH(cons);
+    fobj_t *name = fstr_new(f, "constant");
+    PUSH(name);
+    fobj_t *t = fcode_new(f, name, fcode_do_constant_header.code, 0, NULL, cons);
+    PUSH(t);
+    forth_compile_alloc(f);
+    w->u.body[w->body_offset++].word = t;
+    DROP; DROP; DROP;
+}
+
+static void forth_compile_offset(fenv_t *f, int n)
+{
+    fword_t *w = CURRENT;
+
+    forth_compile_alloc(f);
+    w->u.body[w->body_offset++].n = n;
+}
+
 FWORD_DO(var)
 {
     PUSH(w);  // Use @ and ! to read or modify w's u.value field.
@@ -304,7 +398,8 @@ FWORD_DO(var)
 FWORD_DO(exit)
 {
     fobj_t *wp = RPOP;
-    fassert(f, wp->type == FOBJ_CALL, 1, "the return stack does not contain a return address for an exit");
+    fassert(f, wp->type == FOBJ_CALL, 1,
+            "the return stack does not contain a return address for an exit");
 
     f->running = wp->u.call.w;
     f->ip = wp->u.call.ip;
@@ -312,7 +407,7 @@ FWORD_DO(exit)
 
 FWORD_DO(colon)
 {
-    int rp_saved = RP;
+    int depth_saved = RDEPTH;
     fobj_t *wp = fobj_new(f, FOBJ_CALL);
 
     IP = w->u.word.u.body;
@@ -326,7 +421,7 @@ FWORD_DO(colon)
         fobj_t *nw = IP++ -> word;
         f->running->u.call.ip = f->ip;
         CALL(nw);
-    } while (RP < rp_saved);
+    } while (RDEPTH > depth_saved);
 }
 
 FWORD_DO(constant)
@@ -344,14 +439,285 @@ FWORD2(mkvar, "var")
     ftable_store(f, f->words, var_name, NULL);
 }
 
-FWORD2(mkconst, "const")
+/*
+ * DO(const)
+ *
+ * This is the second half of IMM(const).  In the immediate code, the name
+ * was read and an entry was created with the code field pointing here.
+ * Then, when the code ran for the first time, this code will POP a value off
+ * the stack and store that value into this word's value field.  And, it will
+ * change the code field to point to DO(constant) where -that- code will
+ * -push- the value field on the stack whenever the word is used.  Whew!
+ */
+FWORD_DO(const)
 {
     fobj_t *cons_value = POP;
     fassert(f, !!cons_value, 1, "const must be preceded by a non-null value");
 
+    w->u.word.u.value = cons_value;
+    w->u.word.code = fcode_do_constant_header.code;
+}
+
+/*
+ * IMM(const)
+ *
+ * Immediately run and parse the following token.  However, POP doesn't
+ * work here because the code is running in the compiler.  So, we compile a
+ * code word to update a constant at run time.  Huh?  What constant?  The
+ * problem is that any code that follows here wouldn't find the newly
+ * minted constant.  So, instead we add a word to the dictionary.
+ */
+
+FWORD_IMM(const)
+{
     fobj_t *cons_name;
     (void) fparse_token(f, &cons_name);
     fassert(f, !!cons_name, 1, "const must be followed by a name");
+    fobj_t *cons = fcode_new(f, cons_name, fcode_do_const_header.code, 0, NULL, NULL);
 
-    ftable_store(f, f->words, cons_name, cons_value);
+    ftable_store(f, f->words, cons_name, cons);
+    forth_compile_word(f, cons);
+}
+
+/**********************************************************
+ *
+ * Control Words
+ *
+ **********************************************************/
+
+#define FSTATE_COLON       1
+#define FSTATE_DO          2
+#define FSTATE_IF          3
+
+static int forth_state(fenv_t *f)
+{
+    if (DEPTH == 0) {
+        return 0;
+    }
+
+    fobj_t *p = POP;
+    PUSH(p);
+    if (p->type != FOBJ_STATE) {
+        return 0;
+    }
+
+    return p->u.state.state;
+}
+
+static void forth_state_push(fenv_t *f, int state, int offset)
+{
+    PUSH(fstate_new(f, state, CURRENT->body_offset));
+}
+
+static fobj_t *forth_state_pop(fenv_t *f)
+{
+    fobj_t *p = POP;
+
+    fassert(f, p->type == FOBJ_STATE, 1, "compiler state not top of the stack");
+
+    return p;
+}
+
+static void forth_mark(fenv_t *f, fobj_t *branch_word, int state_type)
+{
+    if (branch_word) {
+        forth_compile_word(f, branch_word);
+        forth_compile_offset(f, 0); // Unknown at this time
+    }
+
+    forth_state_push(f, state_type, CURRENT->body_offset);
+}
+
+static int forth_resolve(fenv_t *f, int state_type)
+{
+    fassert(f, forth_state(f) == state_type,
+                 1,
+                 "Control words must be matched properly: if [else] then, do loop, : ; etc.");
+    fobj_t *mark = POP;
+    assert(mark->type == FOBJ_STATE);  // Should be an fassert()
+    assert(mark->u.state.state == state_type);  // Logic error in this code if not
+    int offset = mark->u.state.offset;
+    CURRENT->u.body[offset -1].n = CURRENT->body_offset - offset;
+    return offset;
+}
+
+static void forth_back_branch(fenv_t *f, fobj_t *branch_word, int target_offset)
+{
+    forth_compile_word(f, branch_word);
+    forth_compile_offset(f, - (CURRENT->body_offset + 1 - target_offset));
+}
+
+FWORD_IMM(if)
+{
+    forth_mark(f, do_zbranch, FSTATE_IF);
+}
+
+FWORD_IMM(else)
+{
+    fassert(f, forth_state(f) == FSTATE_IF,
+                 1,
+                 "else must follow an if");
+    fobj_t *if_mark = POP;
+    forth_mark(f, do_branch, FSTATE_IF);
+    PUSH(if_mark);
+    forth_resolve(f, FSTATE_IF);
+}
+
+FWORD_IMM(then)
+{
+    forth_resolve(f, FSTATE_IF);
+}
+
+FWORD_DO(do)
+{
+    int start = POPN;
+    int limit = POPN;
+    fobj_t *loop = fobj_new(f, FOBJ_LOOP);
+    loop->u.loop.limit = limit;
+    loop->u.loop.index = start;
+    RPUSH(loop);
+}
+
+FWORD_DO(loop)
+{
+    // Pop the loop info off the return stack and process it
+    fobj_t *p = RPOP;
+    fassert(f, p->type == FOBJ_LOOP, 1, "attempting a looping word without a loop condition on the stack.");
+    floop_t *do_loop = &p->u.loop;
+
+    do_loop->index ++;
+    if (do_loop->index >= do_loop->limit) {
+        IP ++;
+    } else {
+        RPUSH(p);
+        do_branch->u.word.code(f, w);
+    }
+}
+
+FWORD(i)
+{
+    fobj_t *p = RPOP;
+    RPUSH(p);
+
+    fassert(f, p->type == FOBJ_LOOP, 1, "attempting a looping word without a loop condition on the stack.");
+    floop_t *do_loop = &p->u.loop;
+
+    PUSHN(do_loop->index);
+}    
+
+
+FWORD_IMM(do)
+{
+    forth_compile_word(f, do_do);
+    forth_mark(f, NULL, FSTATE_DO);
+}
+
+FWORD_IMM(loop)
+{
+    fassert(f, forth_state(f) == FSTATE_DO,
+                 1,
+                 "loop must follow a do");
+
+    fobj_t *do_mark = forth_state_pop(f);
+
+    forth_back_branch(f, do_loop, do_mark->u.state.offset);
+}
+    
+
+/**********************************************************
+ *
+ * Defining Words (e.g., : ;)
+ *
+ **********************************************************/
+
+/*
+ * colon()
+ *
+ * Continue executing words until an exit pops an IP and the RP
+ * finally returns to its value on entry.
+ */
+
+FWORD_IMM2(colon, ":")
+{
+    // Verfiy we're not currently compiling or otherwise encumbered
+    fassert(f, !forth_state(f),
+                 1,
+                 "Cannot use the colon word inside a do, if, etc.");
+    fassert(f, f->in_colon == 0, 1, "Can't compile inside a colon definition");
+
+    PUSH(f->current_compiling);
+    f->in_colon = 1;
+
+    // Allocate memory for the header
+    f->current_compiling = fobj_new(f, FOBJ_WORD);
+
+    // Fetch the next token, i.e., the name of the new word
+    fobj_t *name_token;
+    int r = fparse_token(f, &name_token);
+    fassert(f, r, 1, "Need more input");
+
+    CURRENT->name = name_token;
+    CURRENT->code = fcode_do_colon_header.code;
+    CURRENT->immediate = 0;
+}
+
+FWORD_IMM2(semicolon, ";")
+{
+    fassert(f, forth_state(f) == 0,
+            1,
+            "Semicolon (;) can only be used used to terminate a colon definition");
+    fassert(f, f->in_colon == 1,
+            1,
+            "Semicolon (;) can only be used used to terminate a colon definition");
+
+    // Compile an exit word
+    forth_compile_word(f, do_exit);
+
+    ftable_store(f, f->words, CURRENT->name, f->current_compiling);
+    f->current_compiling = POP;
+    f->in_colon = 0;
+}
+
+
+void fcode_handle_token(fenv_t *f, fobj_t *token)
+{
+    ASSERT(token->type == FOBJ_STR);
+    fobj_t *w = ftable_fetch(f, f->words, token);
+    if (w) {
+        ASSERT(w->type == FOBJ_WORD);
+        if (w->u.word.immediate) {
+            w->u.word.code(f, w);
+        } else {
+            forth_compile_word(f, w);
+        }
+    } else {
+        fnumber_t n = 0;
+        int r = fparse_token_to_number(f, token, &n);
+        fassert(f, r, 1,
+                "Input token not found in dictionary and isn't a number: <%s>",
+                token->u.str.buf);
+        forth_compile_cons(f, n);
+    }
+}
+
+void fcode_compile_string(fenv_t *f, const char *string)
+{
+    fobj_t *token;
+
+    f->input_str = fstr_new(f, string);
+
+    f->current_compiling = fcode_new(f, fstr_new(f, "input string"),
+                                     fcode_do_colon_header.code,
+                                     /* immediate */ 0,
+                                     NULL, NULL);
+
+    do {
+        int r = fparse_token(f, &token);
+        if (!r) break;
+        fcode_handle_token(f, token);
+    } while (1);
+    forth_compile_word(f, do_exit);
+
+    CURRENT->code(f, f->current_compiling);
+    f->current_compiling = NULL;
 }

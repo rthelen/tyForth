@@ -23,7 +23,7 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
     if (condition) return;
 
     va_start(ap, fmt);
-    fprintf(stderr, fmt, ap);
+    vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     va_end(ap);
 
@@ -36,14 +36,7 @@ static void forth_test_string(const char *string)
 
     fenv_t *f = fenv_new();
     fcode_init(f);
-    f->input_str = fstr_new(f, string);
-    fobj_t *token;
-    do {
-        int r = fparse_token(f, &token);
-        if (!r) break;
-        fparse_do_token(f, token);
-    } while (1);
-
+    fcode_compile_string(f, string);
     fenv_free(f);
 
     printf("\n");
@@ -52,7 +45,6 @@ static void forth_test_string(const char *string)
 int main(int argc, char *argv[])
 {
     forth_test_string("1.25 2 1.5 + + .");
-    forth_test_string("{} dup 5 swap 1 ] ! 2 ] @ .");
-    forth_test_string("{} const foo");
+    forth_test_string("{} const arr   10 arr 1 ] !   20 arr 2 ] !  arr 1 ] @ .  arr 2 ] @ .  arr 3 ] @ .");
     return 0;
 }

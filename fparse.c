@@ -61,7 +61,7 @@ int fparse_token(fenv_t *f, fobj_t **token_str)
     }
 }
 
-static int fparse_token_to_number(fenv_t *f, fobj_t *token, fnumber_t *n)
+int fparse_token_to_number(fenv_t *f, fobj_t *token, fnumber_t *n)
 {
     int i, len;
     char *p, *buf;
@@ -122,8 +122,8 @@ void fparse_do_token(fenv_t *f, fobj_t *token)
         int r = fparse_token_to_number(f, token, &n);
         fassert(f, r, 1, "Word %s not found in the dictionary", token->u.str.buf);
         fobj_t *num = fnum_new(f, n);
-        extern void fcode_push(void *, void *, void *);
-        fcode_push(f, NULL, num);
+        extern void fcode_push(void *, void *);
+        fcode_push(f, num);
     }
 }
 
