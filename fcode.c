@@ -515,6 +515,27 @@ FWORD_IMM(const)
 
 /**********************************************************
  *
+ * Branch Words
+ *
+ **********************************************************/
+
+FWORD_DO(branch)
+{
+    IP += (int) ((IP -1) ->n);
+}
+
+FWORD_DO(zbranch)
+{
+    if (POP == 0) {
+        fcode_do_branch(f, w);
+    } else {
+        // Branch offset a part of the previous instruction;
+        // Skipped.
+    }
+}
+
+/**********************************************************
+ *
  * Control Words
  *
  **********************************************************/
