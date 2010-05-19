@@ -48,5 +48,14 @@ int main(int argc, char *argv[])
     forth_test_string("{} const arr   10 arr 1 ] !   20 arr 2 ] !  arr 1 ] @ .  arr 2 ] @ .  arr 3 ] @ .");
     forth_test_string("5 3 + . : eight 5 3 + ; eight eight * .");
     forth_test_string("10 1 do i . loop");
+    forth_test_string(": bl 32 emit ; "
+                      ": cr 13 emit 10 emit ; "
+                      ": star 42 emit ; "
+                      ": stars 0 do star loop ; "
+                      ": spaces 0 do bl loop ; "
+                      ": tree-top dup 0 do dup 1 + i - spaces i 2* 1 + stars cr loop drop ; "
+                      ": trunk 5 0 do dup 1 + spaces star cr loop drop ; "
+                      ": tree dup tree-top trunk ; "
+                      "5 tree 20 tree");
     return 0;
 }
