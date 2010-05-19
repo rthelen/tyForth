@@ -739,10 +739,16 @@ void fcode_compile_string(fenv_t *f, const char *string)
     forth_compile_word(f, do_exit, 0);
 
     /*
-     * Merge f->new_words into f->words
+     * Merge f->new_words into f->words.  This algorithm should probably be
+     * in fhash.c.
      */
 
-	// To do.
+    fhash_t *new_words = &f->new_words->u.table.hash->u.hash;
+    for (int i = 0; i < new_words->num_kv; i++) {
+        ftable_store(f, f->words, 
+                     new_words->keys_values[i * 2],
+                     new_words->keys_values[i * 2 + 1]);
+    }
 
     CURRENT->code(f, f->current_compiling);
     f->current_compiling = NULL;

@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 {
     forth_test_string("1.25 2 1.5 + + .");
     forth_test_string("{} const arr   10 arr 1 ] !   20 arr 2 ] !  arr 1 ] @ .  arr 2 ] @ .  arr 3 ] @ .");
-    forth_test_string("5 3 + . : eight 5 3 + ; eight .");
+    forth_test_string("5 3 + . : eight 5 3 + ; eight eight * .");
     forth_test_string("10 1 do i . loop");
     return 0;
 }
