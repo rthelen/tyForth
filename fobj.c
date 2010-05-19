@@ -97,6 +97,18 @@ void fenv_free(fenv_t *f)
 
 fobj_t *fobj_new(fenv_t *f, int type)
 {
+    if (f->obj_memory->num_free_objs == 0) {
+        fobj_garbage_collection(f);
+    }
+
+#ifdef DEBUG
+    /*
+     * DEBUG: Always garbage collect!
+     */
+
+    fobj_garbage_collection(f);
+#endif /* DEBUG */
+
     fassert(f, f->obj_memory->num_free_objs > 0, 1, "out of memory allocating a new fobj");
 
     fobj_mem_t *m = f->obj_memory;
@@ -135,6 +147,10 @@ void fobj_garbage_collection(fenv_t *f)
     fobj_visit(f, f->dstack);
     fobj_visit(f, f->rstack);
     fobj_visit(f, f->current_compiling); // during colon definitions
+    fobj_visit(f, f->new_words);
+    fobj_visit(f, f->words);
+    fobj_visit(f, f->input_str);
+    fobj_visit(f, f->running);
 
     for (int i = 0; i < n; i++) {
         uint32_t free = ~copy_inuse_bitmap[i] & m->inuse_bitmap[i];
@@ -159,6 +175,33 @@ void fobj_garbage_collection(fenv_t *f)
             m->next_free[j] = pj;
         }
     }
+}
+
+void fobj_hold(fenv_t *f, fobj_t *p)
+{
+    fstack_store(f, f->hold_stack, NULL, p);
+}
+
+void fobj_hold_n(fenv_t *f, int n, ...)
+{
+    va_list ap;
+
+    va_start(ap, n);
+    for (int i = 0; i < n; i++) {
+        fobj_hold(f, va_arg(ap, fobj_t *));
+    }
+    va_end(ap);
+}
+
+int fobj_max_hold_sp = 0;
+
+void fobj_hold_clear(fenv_t *f)
+{
+    if (f->hold_stack->u.stack.sp > fobj_max_hold_sp) {
+        fobj_max_hold_sp = f->hold_stack->u.stack.sp;
+    }
+
+    f->hold_stack->u.stack.sp = 0;
 }
 
 void fobj_print(fenv_t *f, fobj_t *p)

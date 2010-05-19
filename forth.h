@@ -65,6 +65,8 @@ struct fenv_s {
     fobj_t			*input_str;
     int				 input_offset;
 
+    fobj_t			*hold_stack;
+
     fobj_t			*running;
     fbody_t			*ip;
 
@@ -78,6 +80,13 @@ struct fenv_s {
 void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
 
 void fobj_garbage_collection(fenv_t *f);
+
+#define HOLD(p)				fobj_hold(f, p)
+#define HOLD1(p)			fobj_hold(f, p)
+#define HOLD2(a,b)			fobj_hold_n(f, 2, a, b)
+#define HOLD3(a,b,c)		fobj_hold_n(f, 3, a, b, c)
+#define HOLD4(a,b,c,d)		fobj_hold_n(f, 4, a, b, c, d)
+
 
 fenv_t *fenv_new(void);
 void    fenv_free(fenv_t *f);
@@ -94,6 +103,10 @@ fobj_t *fobj_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 void    fobj_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 int     fobj_cmp(fenv_t *f, fobj_t *a, fobj_t *b);
 int     fobj_is_index(fenv_t *f, fobj_t *obj);
+
+void    fobj_hold(fenv_t *f, fobj_t *p);
+void    fobj_hold_n(fenv_t *f, int n, ...);
+void    fobj_hold_clear(fenv_t *f);
 
 fobj_t *fnum_new(fenv_t *f, fnumber_t n);
 void    fnum_print(fenv_t *f, fobj_t *p);

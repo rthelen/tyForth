@@ -455,6 +455,7 @@ FWORD_DO(colon)
     do {
         fobj_t *nw = IP++ -> word;
         CALL(nw);
+        fobj_hold_clear(f);
     } while (RDEPTH > depth_saved);
 }
 
