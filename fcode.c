@@ -562,7 +562,7 @@ static int forth_resolve(fenv_t *f, int state_type)
 
 static void forth_back_branch(fenv_t *f, fobj_t *branch_word, int target_offset)
 {
-    forth_compile_word(f, branch_word, - (CURRENT->body_offset + 1 - target_offset));
+    forth_compile_word(f, branch_word, - (CURRENT->body_offset - target_offset));
 }
 
 FWORD_IMM(if)
@@ -605,10 +605,10 @@ FWORD_DO(loop)
 
     do_loop->index ++;
     if (do_loop->index >= do_loop->limit) {
-        IP ++;
+        // Do nothing
     } else {
         RPUSH(p);
-        do_branch->u.word.code(f, w);
+        IP += (int) ((IP -1) ->n);
     }
 }
 
