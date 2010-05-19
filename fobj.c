@@ -79,6 +79,7 @@ fenv_t *fenv_new(void)
     f->dstack = fstack_new(f);
     f->rstack = fstack_new(f);
     f->words  = ftable_new(f);
+    f->hold_stack = fstack_new(f);
 
     return f;
 }
