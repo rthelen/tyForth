@@ -35,7 +35,7 @@ define pobj
   end
   if $obj->type == 8
     printf "Word: Name = \"%s\"\n", $obj->u.word.name->u.str.buf
-    print $obj->word
+    print $obj->u.word
   end
   if $obj->type > 8
     printf "Unknown\n"

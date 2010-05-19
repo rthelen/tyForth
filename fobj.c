@@ -18,6 +18,7 @@ const foptable_t op_table[FOBJ_NUM_TYPES] = {
     { "hash",   NULL, fhash_visit,  fhash_free, fhash_print, NULL, fhash_store, fhash_fetch },
     { "stack",  NULL, fstack_visit, fstack_free, fstack_print, NULL, fstack_store, fstack_fetch },
     { "index",  NULL, findex_visit, NULL, NULL, NULL, NULL, NULL },
+    { "word",   NULL, fword_visit, fword_free, fword_print, NULL, NULL, NULL, NULL, NULL },
 };
 
 #define NUM_OBJ_MEM		1024

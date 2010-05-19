@@ -51,7 +51,7 @@ typedef struct fword_s fword_t;
 typedef struct floop_s floop_t;
 
 typedef void (*fcode_t)(fenv_t *f, fobj_t *w);
-typedef union fbody_u fbody_t;
+typedef struct fbody_s fbody_t;
 
 struct fenv_s {
     fobj_mem_t		*obj_memory;
@@ -59,6 +59,8 @@ struct fenv_s {
     fobj_t			*rstack;
     fobj_t			*words;
     fobj_t			*imm_words;
+
+    fobj_t			*new_words;
 
     fobj_t			*input_str;
     int				 input_offset;
@@ -148,6 +150,10 @@ void    fcode_init(fenv_t *f);
 void    fcode_new_word(fenv_t *f, fobj_t *name, fbody_t *body);
 void fcode_handle_token(fenv_t *f, fobj_t *token);
 void fcode_compile_string(fenv_t *f, const char *string);
+
+void fword_visit(fenv_t *f, fobj_t *w);
+void fword_free(fenv_t *f, fobj_t *w);
+void fword_print(fenv_t *f, fobj_t *w);
 
 fobj_t *fstate_new(fenv_t *f, int state, int offset);
 
