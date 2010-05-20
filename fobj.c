@@ -43,7 +43,7 @@ static int	fobj_obj_mem_index(fenv_t *f, fobj_t *p)
 
 static int fobj_obj_index_used(fenv_t *f, int idx)
 {
-    int bit = 1 << (idx & 31);
+    uint32_t bit = 1 << (idx & 31);
     int bitmap_i = idx >> 5;
     fobj_mem_t *m = f->obj_memory;
 
@@ -67,7 +67,7 @@ static void fobj_obj_mem_init(fenv_t *f)
     fobj_mem_t *m = f->obj_memory;
     m->num_free_objs = NUM_OBJ_MEM;
     for (int i = 0; i < NUM_OBJ_MEM; i++) {
-        m->next_free[i] = i;
+        m->next_free[i] = NUM_OBJ_MEM - 1 - i;
     }
 }
 
@@ -76,10 +76,13 @@ fenv_t *fenv_new(void)
     fenv_t *f = calloc(1, sizeof(*f));
 
     fobj_obj_mem_init(f);
+
+    f->hold_stack = fstack_new(f);
     f->dstack = fstack_new(f);
     f->rstack = fstack_new(f);
     f->words  = ftable_new(f);
-    f->hold_stack = fstack_new(f);
+
+    fobj_hold_clear(f);
 
     return f;
 }
@@ -88,6 +91,14 @@ void fenv_free(fenv_t *f)
 {
     f->dstack = NULL;
     f->rstack = NULL;
+    f->hold_stack = NULL;
+    f->running = NULL;
+    f->words = NULL;
+    f->new_words = NULL;
+    f->imm_words = NULL;
+    f->input_str = NULL;
+    f->current_compiling = NULL;
+
     fobj_garbage_collection(f);
 #ifdef DEBUG
     for (int i = 0; i < NUM_OBJ_MEM/32; i++) {
@@ -95,6 +106,31 @@ void fenv_free(fenv_t *f)
     }
 #endif
 }
+
+#if DEBUG_MISSING_OBJECTS
+fobj_t *fobj_findp = NULL;
+fobj_t *fobj_foundp = NULL;
+
+void fobj_find(fenv_t *f, fobj_t *p)
+{
+    fobj_findp = p;
+    fobj_foundp = NULL;
+    fobj_mem_t *m = f->obj_memory;
+
+    bzero(m->inuse_bitmap, NUM_OBJ_MEM/8);
+
+    fobj_visit(f, f->dstack);
+    fobj_visit(f, f->rstack);
+    fobj_visit(f, f->current_compiling); // during colon definitions
+    fobj_visit(f, f->new_words);
+    fobj_visit(f, f->words);
+    fobj_visit(f, f->input_str);
+    fobj_visit(f, f->running);
+    fobj_visit(f, f->hold_stack);
+
+    ASSERT(!!fobj_foundp);
+}
+#endif /* DEBUG_MISSING_OBJECTS */
 
 fobj_t *fobj_new(fenv_t *f, int type)
 {
@@ -107,23 +143,48 @@ fobj_t *fobj_new(fenv_t *f, int type)
      * DEBUG: Always garbage collect!
      */
 
-    fobj_garbage_collection(f);
+    if (f->hold_stack) {
+        fobj_garbage_collection(f);
+    }
 #endif /* DEBUG */
 
-    fassert(f, f->obj_memory->num_free_objs > 0, 1, "out of memory allocating a new fobj");
-
     fobj_mem_t *m = f->obj_memory;
+
+#if DEBUG_MISSING_OBJECTS
+    if (m->num_free_objs == 0) {
+        for (int idx = 0; idx < NUM_OBJ_MEM; idx ++) {
+            fobj_find(f, &m->objs[idx]);
+        }
+    }
+#endif /* DEBUG_MISSING_OBJECTS */
+
+    fassert(f, m->num_free_objs > 0, 1, "out of memory allocating a new fobj");
+
     int i = --(m->num_free_objs);
     int pi = m->next_free[i];
+    m->next_free[i] = 0;
     fobj_t *p = &m->objs[pi];
     
     p->type = type;
+
+    int r = fobj_obj_mem_used(f, p);
+    FASSERT(!r, "Just allocated an already in use block", __FILE__, __LINE__);
+
+    if (f->hold_stack) {
+        HOLD(p);  // Hold newly allocated object
+    }
+
     return p;
 }
 
 void fobj_visit(fenv_t *f, fobj_t *p)
 {
     if (!p) return;
+
+#if DEBUG_MISSING_OBJECTS
+    if (fobj_findp == p) fobj_foundp = p;
+    if (fobj_foundp)     return;
+#endif /* DEBUG_MISSING_OBJECTS */
 
     if (fobj_obj_mem_used(f, p)) return;
 
@@ -139,8 +200,8 @@ void fobj_garbage_collection(fenv_t *f)
     // Determine which objects are no longer used and call their free routine
     uint32_t copy_inuse_bitmap[NUM_OBJ_MEM / 32];
     int n = NUM_OBJ_MEM / 32;
-    int nbytes = n * sizeof(uint32_t);
     fobj_mem_t *m = f->obj_memory;
+    int nbytes = sizeof(m->inuse_bitmap);
 
     bcopy(m->inuse_bitmap, copy_inuse_bitmap, nbytes);
     bzero(m->inuse_bitmap, nbytes);
@@ -152,14 +213,26 @@ void fobj_garbage_collection(fenv_t *f)
     fobj_visit(f, f->words);
     fobj_visit(f, f->input_str);
     fobj_visit(f, f->running);
+    fobj_visit(f, f->hold_stack);
 
     for (int i = 0; i < n; i++) {
-        uint32_t free = ~copy_inuse_bitmap[i] & m->inuse_bitmap[i];
+        /*
+         * free will have bits set for items which the allocator had
+         * -thought- were in use (i.e., they had been allocated at some
+         * point in the past) but are no longer in use (i.e., they're inuse
+         * bit in m->inuse_bitmap[] is now zero).
+         *
+         * The algorithm works by noting that if a bit had been set
+         * previously (i.e., a bit is set in copy_inuse_bitmap[]), but is
+         * now clear (i.e., the bit is clear in m->inuse_bitmap[]), then we
+         * need to add that object to the free list.
+         */
+        uint32_t free = copy_inuse_bitmap[i] & ~m->inuse_bitmap[i];
         if (!free) {
             continue;
         }
 
-        fobj_t *p = &m->objs[n];
+        fobj_t *p = &m->objs[i * 32];
         for (uint32_t bit = 1; free && bit; bit <<= 1, p++) {
             if (!(free & bit)) {
                 continue;
@@ -178,9 +251,11 @@ void fobj_garbage_collection(fenv_t *f)
     }
 }
 
-void fobj_hold(fenv_t *f, fobj_t *p)
+fobj_t *fobj_hold(fenv_t *f, fobj_t *p)
 {
+    if (!p) return NULL;
     fstack_store(f, f->hold_stack, NULL, p);
+    return p;
 }
 
 void fobj_hold_n(fenv_t *f, int n, ...)

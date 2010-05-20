@@ -59,7 +59,7 @@ fobj_t *fstack_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
     fstack_t *s = &addr->u.stack;
     fassert(f, !index, 1, "indexed fetch of stack not supported");  // Yet.
     fassert(f, s->sp > 0, 1, "stack underflow error");
-    return s->elems[--s->sp];
+    return HOLD(s->elems[--s->sp]);
 }
 
 void fstack_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)

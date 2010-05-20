@@ -104,7 +104,7 @@ void    fobj_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 int     fobj_cmp(fenv_t *f, fobj_t *a, fobj_t *b);
 int     fobj_is_index(fenv_t *f, fobj_t *obj);
 
-void    fobj_hold(fenv_t *f, fobj_t *p);
+fobj_t *fobj_hold(fenv_t *f, fobj_t *p);
 void    fobj_hold_n(fenv_t *f, int n, ...);
 void    fobj_hold_clear(fenv_t *f);
 

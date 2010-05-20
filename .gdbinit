@@ -46,3 +46,56 @@ pobj <fobj_t *>
 
 pobj will print the object as whatever type it is.
 end
+
+define fbreak
+  break FASSERT if !x
+  break fassert if !condition
+end
+document fbreak
+Set break points in FASSERT and fassert.
+end
+
+define mdump
+  set $M = f->obj_memory
+  printf "Number of free objects: %d\n", $M->num_free_objs
+  printf "inuse_bitmap: "
+  p/x $M->inuse_bitmap
+  set $N = $M->num_free_objs
+  set $MAX_I = 1024
+  printf "Free object numbers: "
+  if $N > (2 * $MAX_I)
+    set $N = $MAX_I
+    set $I = 0
+    while $I < $N
+      printf "%d, ", $M->next_free[$I]
+      set $I = $I + 1
+    end
+    printf " ... "
+    set $N = $M->num_free_objs
+    set $I = $N - $MAX_I
+    while $I < $N
+      printf "%d, ", $M->next_free[$I]
+      set $I = $I + 1
+    end
+    printf "\n"
+  else
+    set $I = 0
+    while $I < $N
+      printf "%d, ", $M->next_free[$I]
+      set $I = $I + 1
+    end
+    printf "\n"
+  end
+  set $IDX = 0
+  while $IDX < 1024
+    if $M->inuse_bitmap[$IDX / 32] & (1 << ($IDX & 31))
+      printf "In use object %d: ", $IDX
+      pobj $M->objs[$IDX]
+    end
+    set $IDX = $IDX + 1
+  end
+end
+document mdump
+mdump <f>
+Print out the f->obj_memory in a useful fasion.
+end

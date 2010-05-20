@@ -185,6 +185,7 @@ void fcode_init(fenv_t *f)
     for (int i = 0; (p = fcode_primitives_ptrs[i]); i++) {
         fobj_t *name = fstr_new(f, p->name);
         fcode_install(f, fcode_new(f, name, p->code, p->immediate, NULL, NULL));
+        fobj_hold_clear(f);
     }
 
     f->current_compiling = NULL;
@@ -410,13 +411,9 @@ static void forth_compile_word(fenv_t *f, fobj_t *c, int offset)
 static void forth_compile_cons(fenv_t *f, fnumber_t n)
 {
     fobj_t *cons = fnum_new(f, n);
-    PUSH(cons);
     fobj_t *name = fstr_new(f, "constant");
-    PUSH(name);
     fobj_t *t = fcode_new(f, name, fcode_do_constant_header.code, 0, NULL, cons);
-    PUSH(t);
     forth_compile_word(f, t, 0);
-    DROP; DROP; DROP;
 }
 
 FWORD_DO(var)
