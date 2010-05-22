@@ -8,10 +8,15 @@
 #include "forth.h"
 #include "fobj.h"
 
+void zzz(void)
+{
+    fflush(stdout);
+}
+
 void FASSERT(int x, const char *err, const char *file, int line)
 {
     if (!(x)) {
-        fflush(stdout);
+        zzz();
         fprintf(stderr, "INTERNAL ERROR: %s in file %s on line %d\n", err, file, line);
         exit(-1);
     }
@@ -23,7 +28,7 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
 
     if (condition) return;
 
-    fflush(stdout);
+    zzz();
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
@@ -68,7 +73,7 @@ int main(int argc, char *argv[])
                       "   maxp 0 do 1 sieve_map i ] ! loop "
                       "   1 "
                       "   maxp 0 do "
-                      "      i sieve_map i ] @ if "
+                      "      sieve_map i ] @ if "
                       "         i 2* 3 + dup . dup i + "
                       "         begin dup maxp < "
                       "         while 0 over sieve_map swap ] ! "

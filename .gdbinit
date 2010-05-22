@@ -48,8 +48,7 @@ pobj will print the object as whatever type it is.
 end
 
 define fbreak
-  break FASSERT if !x
-  break fassert if !condition
+  break zzz
 end
 document fbreak
 Set break points in FASSERT and fassert.
