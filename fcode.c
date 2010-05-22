@@ -303,6 +303,7 @@ FWORD(xor)           { PUSHN(POPI ^ POPI); }
 FWORD(negate)        { PUSHN(-POPN); }
 FWORD(invert)        { PUSHN(~POPI); }
 
+FWORD2(1plus, "1+")        { PUSHN(POPN + 1); }
 FWORD2(2star, "2*")        { PUSHN(POPI * 2); }
 FWORD2(2slash, "2/")       { PUSHN(POPI / 2); }
 FWORD2(u2slash, "u2/")     { PUSHN(POPI >> 1); }
@@ -318,6 +319,9 @@ FWORD2(ushift_right, "u>>")
 
 FWORD2(uless, "u<")
 {  fuint_t b =  POPI;  fuint_t a = POPI; PUSHN(a < b ? -1 : 0); }
+
+FWORD2(less, "<")
+{  fint_t b =  POPI;  fint_t a = POPI; PUSHN(a < b ? -1 : 0); }
 
 FWORD2(fetch, "@")
 {
@@ -500,7 +504,7 @@ FWORD_DO(const)
  * minted constant.  So, instead we add a word to the dictionary.
  */
 
-FWORD_IMM(const)
+FWORD_IMM(constant)
 {
     fobj_t *cons_name;
     (void) fparse_token(f, &cons_name);
@@ -519,16 +523,13 @@ FWORD_IMM(const)
 
 FWORD_DO(branch)
 {
-    IP += (int) ((IP -1) ->n);
+    IP += (int) ((IP -1) ->n) - 1;
 }
 
 FWORD_DO(zbranch)
 {
-    if (POP == 0) {
+    if (POPN == 0) {
         fcode_do_branch(f, w);
-    } else {
-        // Branch offset a part of the previous instruction;
-        // Skipped.
     }
 }
 
@@ -541,6 +542,8 @@ FWORD_DO(zbranch)
 #define FSTATE_COLON       1
 #define FSTATE_DO          2
 #define FSTATE_IF          3
+#define FSTATE_BEGIN	   4
+#define FSTATE_WHILE       5
 
 static int forth_state(fenv_t *f)
 {
@@ -559,7 +562,7 @@ static int forth_state(fenv_t *f)
 
 static void forth_state_push(fenv_t *f, int state, int offset)
 {
-    PUSH(fstate_new(f, state, CURRENT->body_offset));
+    PUSH(fstate_new(f, state, offset));
 }
 
 static fobj_t *forth_state_pop(fenv_t *f)
@@ -573,11 +576,13 @@ static fobj_t *forth_state_pop(fenv_t *f)
 
 static void forth_mark(fenv_t *f, fobj_t *branch_word, int state_type)
 {
+    int offset = CURRENT->body_offset;
+
     if (branch_word) {
         forth_compile_word(f, branch_word, 0); // Unknown offset at this time
     }
 
-    forth_state_push(f, state_type, CURRENT->body_offset);
+    forth_state_push(f, state_type, offset);
 }
 
 static int forth_resolve(fenv_t *f, int state_type)
@@ -589,7 +594,7 @@ static int forth_resolve(fenv_t *f, int state_type)
     assert(mark->type == FOBJ_STATE);  // Should be an fassert()
     assert(mark->u.state.state == state_type);  // Logic error in this code if not
     int offset = mark->u.state.offset;
-    CURRENT->u.body[offset -1].n = CURRENT->body_offset - offset;
+    CURRENT->u.body[offset].n = CURRENT->body_offset - offset;
     return offset;
 }
 
@@ -674,6 +679,27 @@ FWORD_IMM(loop)
     forth_back_branch(f, do_loop, do_mark->u.state.offset);
 }
     
+FWORD_IMM(begin)
+{
+    forth_mark(f, NULL, FSTATE_BEGIN);
+}
+
+
+FWORD_IMM(while)
+{
+    forth_mark(f, do_zbranch, FSTATE_WHILE);
+}
+
+FWORD_IMM(repeat)
+{
+    fassert(f, forth_state(f) == FSTATE_WHILE,
+                 1,
+                 "repeat must follow a while");
+    SWAP;  /* begin_mark  while_mark --> while_mark  begin_mark */
+    fobj_t *begin_mark = POP;
+    forth_back_branch(f, do_branch, begin_mark->u.state.offset);
+    forth_resolve(f, FSTATE_WHILE);
+}
 
 /**********************************************************
  *

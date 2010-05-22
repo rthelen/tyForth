@@ -21,7 +21,7 @@ const foptable_t op_table[FOBJ_NUM_TYPES] = {
     { "word",   NULL, fword_visit, fword_free, fword_print, NULL, NULL, NULL, NULL, NULL },
 };
 
-#define NUM_OBJ_MEM		1024
+#define NUM_OBJ_MEM		10240
 
 struct fobj_mem_s {
     uint32_t	inuse_bitmap[NUM_OBJ_MEM / 32];

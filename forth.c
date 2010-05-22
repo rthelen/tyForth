@@ -11,6 +11,7 @@
 void FASSERT(int x, const char *err, const char *file, int line)
 {
     if (!(x)) {
+        fflush(stdout);
         fprintf(stderr, "INTERNAL ERROR: %s in file %s on line %d\n", err, file, line);
         exit(-1);
     }
@@ -22,6 +23,7 @@ void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
 
     if (condition) return;
 
+    fflush(stdout);
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
@@ -44,8 +46,9 @@ static void forth_test_string(const char *string)
 
 int main(int argc, char *argv[])
 {
+    forth_test_string("5 begin 1 - dup while dup . repeat 13 emit");
     forth_test_string("1.25 2 1.5 + + .");
-    forth_test_string("{} const arr   10 arr 1 ] !   20 arr 2 ] !  arr 1 ] @ .  arr 2 ] @ .  arr 3 ] @ .");
+    forth_test_string("{} constant arr   10 arr 1 ] !   20 arr 2 ] !  arr 1 ] @ .  arr 2 ] @ .  arr 3 ] @ .");
     forth_test_string("5 3 + . : eight 5 3 + ; eight eight * .");
     forth_test_string("10 1 do i . loop");
     forth_test_string(": bl 32 emit ; "
@@ -57,5 +60,23 @@ int main(int argc, char *argv[])
                       ": trunk 5 0 do dup 1 + spaces star cr loop drop ; "
                       ": tree dup tree-top trunk ; "
                       "5 tree 20 tree");
+    forth_test_string(": hello 72 emit 101 emit 108 emit 108 emit 111 emit ; "
+                      "1 if hello then");
+    forth_test_string("7919 2/ constant maxp "
+                      "{} constant sieve_map "
+                      ": primes "
+                      "   maxp 0 do 1 sieve_map i ] ! loop "
+                      "   1 "
+                      "   maxp 0 do "
+                      "      i sieve_map i ] @ if "
+                      "         i 2* 3 + dup . dup i + "
+                      "         begin dup maxp < "
+                      "         while 0 over sieve_map swap ] ! "
+                      "             over + "
+                      "         repeat "
+                      "         2drop 1+ "
+                      "      then "
+                      "   loop ; "
+                      " primes .");
     return 0;
 }

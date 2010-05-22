@@ -96,6 +96,33 @@ define mdump
   end
 end
 document mdump
-mdump <f>
-Print out the f->obj_memory in a useful fasion.
+mdump
+Print out the f->obj_memory in a useful fasion.  (f is extracted from the current scope.)
+end
+
+define pcode
+  set $W = $arg0
+  if $W->type != 8
+    printf "Argument is not a word object:\n"
+    pobj $W
+  end
+  if $W->u.word.code != fcode_do_colon
+    printf "Word is not a colon definition.\n"
+    pobj $W
+  end
+  set $offset=0
+  while $offset < $W->u.word.body_offset
+    printf "[%d]", $offset
+    if $W->u.word.u.body[$offset].n != 0
+      printf " (offset: %d)", $W->u.word.u.body[$offset].n
+    end
+    printf "\n"
+    pobj $W->u.word.u.body[$offset].word
+    set $offset = $offset + 1
+  end
+end
+document pcode
+pcode <w>
+
+Print the code of colon defintion word <w>.  <w> must be a word where the code field points to fcode_do_colon.
 end
