@@ -213,7 +213,7 @@ void MKFNAME(push)(fenv_t *f, fobj_t *p)
 fnumber_t MKFNAME(pop_num)(fenv_t *f)
 {
     fobj_t *num_obj = POP;
-    fassert(f, num_obj->type == FOBJ_NUM, 1, "A number was expected here");
+    FASSERT(num_obj->type == FOBJ_NUM, "A number was expected here");
     return num_obj->u.num.n;
 }
 
@@ -417,7 +417,7 @@ FWORD_DO(var)
 FWORD_DO(exit)
 {
     fobj_t *wp = RPOP;
-    fassert(f, wp->type == FOBJ_CALL, 1,
+    FASSERT(wp->type == FOBJ_CALL,
             "the return stack does not contain a return address for an exit");
 
     f->running = wp->u.call.w;
@@ -453,7 +453,7 @@ FWORD2(mkvar, "var")
     fobj_t *var_name;
 
     (void) fparse_token(f, &var_name);
-    fassert(f, !!var_name, 1, "var must be followed by a variable name");
+    FASSERT(var_name, "var must be followed by a variable name");
 
     ftable_store(f, f->new_words, var_name, NULL);
 }
@@ -471,7 +471,7 @@ FWORD2(mkvar, "var")
 FWORD_DO(const)
 {
     fobj_t *cons_value = POP;
-    fassert(f, !!cons_value, 1, "const must be preceded by a non-null value");
+    FASSERT(cons_value, "const must be preceded by a non-null value");
 
     w->u.word.u.value = cons_value;
     w->u.word.code = fcode_do_constant_header.code;
@@ -491,7 +491,7 @@ FWORD_IMM(constant)
 {
     fobj_t *cons_name;
     (void) fparse_token(f, &cons_name);
-    fassert(f, !!cons_name, 1, "const must be followed by a name");
+    FASSERT(cons_name, "const must be followed by a name");
     fobj_t *cons = fcode_new(f, cons_name, fcode_do_const_header.code, 0, NULL, NULL);
 
     ftable_store(f, f->new_words, cons_name, cons);
@@ -552,7 +552,7 @@ static fobj_t *forth_state_pop(fenv_t *f)
 {
     fobj_t *p = POP;
 
-    fassert(f, p->type == FOBJ_STATE, 1, "compiler state not top of the stack");
+    FASSERT(p->type == FOBJ_STATE, "compiler state not top of the stack");
 
     return p;
 }
@@ -570,11 +570,10 @@ static void forth_mark(fenv_t *f, fobj_t *branch_word, int state_type)
 
 static int forth_resolve(fenv_t *f, int state_type)
 {
-    fassert(f, forth_state(f) == state_type,
-                 1,
+    FASSERT(forth_state(f) == state_type,
                  "Control words must be matched properly: if [else] then, do loop, : ; etc.");
     fobj_t *mark = POP;
-    assert(mark->type == FOBJ_STATE);  // Should be an fassert()
+    FASSERT(mark->type == FOBJ_STATE, "Control word mismatch");
     assert(mark->u.state.state == state_type);  // Logic error in this code if not
     int offset = mark->u.state.offset;
     CURRENT->u.body[offset].n = CURRENT->body_offset - offset;
@@ -593,8 +592,7 @@ FWORD_IMM(if)
 
 FWORD_IMM(else)
 {
-    fassert(f, forth_state(f) == FSTATE_IF,
-                 1,
+    FASSERT(forth_state(f) == FSTATE_IF,
                  "else must follow an if");
     fobj_t *if_mark = POP;
     forth_mark(f, fcode_lookup_word(f, "(branch)"), FSTATE_IF);
@@ -621,7 +619,7 @@ FWORD_DO(loop)
 {
     // Pop the loop info off the return stack and process it
     fobj_t *p = RPOP;
-    fassert(f, p->type == FOBJ_LOOP, 1, "attempting a looping word without a loop condition on the stack.");
+    FASSERT(p->type == FOBJ_LOOP, "attempting a looping word without a loop condition on the stack.");
     floop_t *do_loop = &p->u.loop;
 
     do_loop->index ++;
@@ -638,7 +636,7 @@ FWORD(i)
     fobj_t *p = RPOP;
     RPUSH(p);
 
-    fassert(f, p->type == FOBJ_LOOP, 1, "attempting a looping word without a loop condition on the stack.");
+    FASSERT(p->type == FOBJ_LOOP, "attempting a looping word without a loop condition on the stack.");
     floop_t *do_loop = &p->u.loop;
 
     PUSHN(do_loop->index);
@@ -653,8 +651,7 @@ FWORD_IMM(do)
 
 FWORD_IMM(loop)
 {
-    fassert(f, forth_state(f) == FSTATE_DO,
-                 1,
+    FASSERT(forth_state(f) == FSTATE_DO,
                  "loop must follow a do");
 
     fobj_t *do_mark = forth_state_pop(f);
@@ -675,8 +672,7 @@ FWORD_IMM(while)
 
 FWORD_IMM(repeat)
 {
-    fassert(f, forth_state(f) == FSTATE_WHILE,
-                 1,
+    FASSERT(forth_state(f) == FSTATE_WHILE,
                  "repeat must follow a while");
     SWAP;  /* begin_mark  while_mark --> while_mark  begin_mark */
     fobj_t *begin_mark = POP;
@@ -700,10 +696,9 @@ FWORD_IMM(repeat)
 FWORD_IMM2(colon, ":")
 {
     // Verfiy we're not currently compiling or otherwise encumbered
-    fassert(f, !forth_state(f),
-                 1,
+    FASSERT(!forth_state(f),
                  "Cannot use the colon word inside a do, if, etc.");
-    fassert(f, f->in_colon == 0, 1, "Can't compile inside a colon definition");
+    FASSERT(f->in_colon == 0, "Can't compile inside a colon definition");
 
     PUSH(f->current_compiling);
     f->in_colon = 1;
@@ -714,7 +709,7 @@ FWORD_IMM2(colon, ":")
     // Fetch the next token, i.e., the name of the new word
     fobj_t *name_token;
     int r = fparse_token(f, &name_token);
-    fassert(f, r, 1, "Need more input");
+    FASSERT(r, "Need more input");
 
     CURRENT->name = name_token;
     CURRENT->code = fcode_do_colon_header.code;
@@ -723,11 +718,9 @@ FWORD_IMM2(colon, ":")
 
 FWORD_IMM2(semicolon, ";")
 {
-    fassert(f, forth_state(f) == 0,
-            1,
+    FASSERT(forth_state(f) == 0,
             "Semicolon (;) can only be used used to terminate a colon definition");
-    fassert(f, f->in_colon == 1,
-            1,
+    FASSERT(f->in_colon == 1,
             "Semicolon (;) can only be used used to terminate a colon definition");
 
     // Compile an exit word
@@ -754,8 +747,7 @@ void fcode_handle_token(fenv_t *f, fobj_t *token)
     } else {
         fnumber_t n = 0;
         int r = fparse_token_to_number(f, token, &n);
-        fassert(f, r, 1,
-                "Input token not found in dictionary and isn't a number: <%s>",
+        FASSERT(r, "Input token not found in dictionary and isn't a number: <%s>",
                 token->u.str.buf);
         forth_compile_cons(f, n);
     }

@@ -6,27 +6,22 @@
  */
 
 #include "forth.h"
-#include "fobj.h"
 
 void zzz(void)
 {
     fflush(stdout);
 }
 
-void FASSERT(int x, const char *err, const char *file, int line)
+void forth_internal_assert(const char *err, const char *file, int line)
 {
-    if (!(x)) {
-        zzz();
-        fprintf(stderr, "INTERNAL ERROR: %s in file %s on line %d\n", err, file, line);
-        exit(-1);
-    }
+    zzz();
+    fprintf(stderr, "INTERNAL ERROR: %s in file %s on line %d\n", err, file, line);
+    exit(-1);
 }
 
-void fassert(fenv_t *f, int condition, int err, const char *fmt, ...)
+void forth_runtime_assert(fenv_t *f, const char *fmt, ...)
 {
     va_list ap;
-
-    if (condition) return;
 
     zzz();
     va_start(ap, fmt);

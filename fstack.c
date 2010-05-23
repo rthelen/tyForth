@@ -57,14 +57,14 @@ static void fstack_grow(fenv_t *f, fstack_t *s)
 fobj_t *fstack_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 {
     fstack_t *s = &addr->u.stack;
-    fassert(f, !index, 1, "indexed fetch of stack not supported");  // Yet.
-    fassert(f, s->sp > 0, 1, "stack underflow error");
+    FASSERT(!index, "indexed fetch of stack not supported");  // Yet.
+    FASSERT(s->sp > 0, "stack underflow error");
     return HOLD(s->elems[--s->sp]);
 }
 
 void fstack_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
 {
-    fassert(f, !index, 1, "indexed store of stack not supported");  // Yet.
+    FASSERT(!index, "indexed store of stack not supported");  // Yet.
     fstack_t *s = &addr->u.stack;
     ASSERT(s->sp <= s->max_sp);
     ASSERT(s->sp >= 0);

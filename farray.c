@@ -63,8 +63,8 @@ static fobj_t **farray_num_index(fenv_t *f, farray_t *a, fnumber_t n)
 
 void farray_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
 {
-    fassert(f, index != NULL, 1, "array must be indexed by NUM");
-    fassert(f, index->type == FOBJ_NUM, 1, "array must be indexed by NUM");
+    FASSERT(index != NULL, "array must be indexed by NUM");
+    FASSERT(index->type == FOBJ_NUM, "array must be indexed by NUM");
 
     farray_t *a = &addr->u.array;
     fnumber_t n = index->u.num.n;
@@ -82,8 +82,8 @@ void farray_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
 
 fobj_t *farray_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 {
-    fassert(f, index != NULL, 1, "array must be indexed by NUM");
-    fassert(f, index->type == FOBJ_NUM, 1, "array must be indexed by NUM");
+    FASSERT(index != NULL, "array must be indexed by NUM");
+    FASSERT(index->type == FOBJ_NUM, "array must be indexed by NUM");
 
     farray_t *a = &addr->u.array;
     fnumber_t n = index->u.num.n;

@@ -37,7 +37,7 @@ static int	fobj_obj_mem_index(fenv_t *f, fobj_t *p)
         p <  &m->objs[NUM_OBJ_MEM]) {
         return p - &m->objs[0];
     }
-    fassert(f, 0, 1, "Only 1024 objects currently supported");
+    FASSERT(0, "Only 1024 objects currently supported");
     return -1;
 }
 
@@ -158,7 +158,7 @@ fobj_t *fobj_new(fenv_t *f, int type)
     }
 #endif /* DEBUG_MISSING_OBJECTS */
 
-    fassert(f, m->num_free_objs > 0, 1, "out of memory allocating a new fobj");
+    FASSERT(m->num_free_objs > 0, "out of memory allocating a new fobj");
 
     int i = --(m->num_free_objs);
     int pi = m->next_free[i];
@@ -168,7 +168,7 @@ fobj_t *fobj_new(fenv_t *f, int type)
     p->type = type;
 
     int r = fobj_obj_mem_used(f, p);
-    FASSERT(!r, "Just allocated an already in use block", __FILE__, __LINE__);
+    ASSERT(!r); // "Just allocated an already in use block"
 
     if (f->hold_stack) {
         HOLD(p);  // Hold newly allocated object
@@ -291,7 +291,7 @@ void fobj_print(fenv_t *f, fobj_t *p)
 
 fobj_t *fobj_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
-    fassert(f, !!op_table[op1->type].add, 1, "%s <> + not supported",
+    FASSERT(op_table[op1->type].add, "%s <> + not supported",
             op_table[op1->type].type_name);
 
     return op_table[op1->type].add(f, op1, op2);
@@ -299,7 +299,7 @@ fobj_t *fobj_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 
 fobj_t *fobj_sub(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
-    fassert(f, !!op_table[op1->type].sub, 1, "%s <> - not supported",
+    FASSERT(op_table[op1->type].sub, "%s <> - not supported",
             op_table[op1->type].type_name);
 
     return op_table[op1->type].sub(f, op1, op2);
@@ -307,7 +307,7 @@ fobj_t *fobj_sub(fenv_t *f, fobj_t *op1, fobj_t *op2)
 
 fobj_t *fobj_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 {
-    fassert(f, !!op_table[addr->type].fetch, 1, "%s @ not supported",
+    FASSERT(op_table[addr->type].fetch, "%s @ not supported",
             op_table[addr->type].type_name);
 
     return op_table[addr->type].fetch(f, addr, index);
@@ -315,7 +315,7 @@ fobj_t *fobj_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 
 void    fobj_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
 {
-    fassert(f, !!op_table[addr->type].store, 1, "%s ! not supported",
+    FASSERT(op_table[addr->type].store, "%s ! not supported",
             op_table[addr->type].type_name);
 
     op_table[addr->type].store(f, addr, index, data);

@@ -23,9 +23,6 @@
 #define TRUE		(!FALSE)
 #endif
 
-void FASSERT(int x, const char *err, const char *file, int line);
-#define ASSERT(x)	FASSERT(!!(x), #x, __FILE__, __LINE__)
-
 #define FOBJ_NUM		1
 #define FOBJ_STR		2
 #define FOBJ_TABLE		3
@@ -77,7 +74,24 @@ struct fenv_s {
     fobj_t			*current_compiling;
 };
 
-void fassert(fenv_t *f, int condition, int error, const char *fmt, ...);
+fenv_t *fenv_new(void);
+void    fenv_free(fenv_t *f);
+
+
+/*
+ * Error handling functions and macros
+ *
+ */
+void forth_internal_assert(const char *err, const char *file, int line);
+#define ASSERT(x)	         do { if (!(x)) forth_internal_assert(#x, __FILE__, __LINE__); } while (0)
+
+void forth_runtime_assert(fenv_t *f, const char *fmt, ...);
+#define FASSERT(x, ...)      do { if (!(x)) forth_runtime_assert(f, __VA_ARGS__); } while (0)
+
+
+/*
+ * Memory
+ */
 
 void fobj_garbage_collection(fenv_t *f);
 
@@ -87,9 +101,6 @@ void fobj_garbage_collection(fenv_t *f);
 #define HOLD3(a,b,c)		fobj_hold_n(f, 3, a, b, c)
 #define HOLD4(a,b,c,d)		fobj_hold_n(f, 4, a, b, c, d)
 
-
-fenv_t *fenv_new(void);
-void    fenv_free(fenv_t *f);
 
 fobj_t *findex_new(fenv_t *f, fobj_t *addr, fobj_t *index);
 void    findex_visit(fenv_t *f, fobj_t *p);
@@ -155,7 +166,6 @@ fobj_t *fhash_new(fenv_t *f);
 void    fhash_visit(fenv_t *f, fobj_t *a);
 void    fhash_free(fenv_t *f, fobj_t *a);
 void    fhash_print(fenv_t *f, fobj_t *a);
-void    fhash_visit(fenv_t *f, fobj_t *a);
 void    fhash_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data);
 fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index);
 

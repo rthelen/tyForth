@@ -108,8 +108,8 @@ fobj_t *fhash_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 
 void fhash_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
 {
-    fassert(f, !!index, 1, "hash store must be indexed");
-    fassert(f, index->type == FOBJ_STR, 1, "hash store must be indexed by STRING");
+    FASSERT(index, "hash store must be indexed");
+    FASSERT(index->type == FOBJ_STR, "hash store must be indexed by STRING");
 
     fhash_t *h = &addr->u.hash;
 

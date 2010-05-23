@@ -49,15 +49,15 @@ fobj_t *ftable_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
     if (index) {
         switch(index->type) {
         case FOBJ_NUM:
-            fassert(f, t->array != NULL, 1, "Can't index an empty array");
+            FASSERT(t->array != NULL, "Can't index an empty array");
             return farray_fetch(f, t->array, index);
 
         case FOBJ_STR:
-            fassert(f, t->hash != NULL, 1, "Can't index an empty hash");
+            FASSERT(t->hash != NULL, "Can't index an empty hash");
             return fhash_fetch(f, t->hash, index);
 
         default:
-            fassert(f, 0, 1, "An indexed table store must be indexed by either a NUM or STRING");
+            FASSERT(0, "An indexed table store must be indexed by either a NUM or STRING");
             return NULL;
         }
     } else {
@@ -82,21 +82,21 @@ fobj_t *ftable_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 
 void ftable_store(fenv_t *f, fobj_t *addr, fobj_t *index, fobj_t *data)
 {
-    fassert(f, !!index, 1, "table store must be indexed");
+    FASSERT(index, "table store must be indexed");
     ftable_t *t = &addr->u.table;
 
     switch(index->type) {
     case FOBJ_NUM:
-        fassert(f, t->array != NULL, 1, "Can't index an empty hash");
+        FASSERT(t->array != NULL, "Can't index an empty hash");
         farray_store(f, t->array, index, data);
         break;
 
     case FOBJ_STR:
-        fassert(f, t->hash != NULL, 1, "Can't index an empty hash");
+        FASSERT(t->hash != NULL, "Can't index an empty hash");
         fhash_store(f, t->hash, index, data);
         break;
 
     default:
-        fassert(f, 0, 1, "table store must be indexed by NUM or STRING");
+        FASSERT(0, "table store must be indexed by NUM or STRING");
     }
 }

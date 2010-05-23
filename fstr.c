@@ -74,7 +74,7 @@ static fobj_t *fstr_compare(fenv_t *f, fobj_t *op1, fobj_t *op2)
 fobj_t *fstr_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
     ASSERT(op1->type == FOBJ_STR);
-    fassert(f, op2->type == FOBJ_STR, 1, "Wrong type");
+    FASSERT(op2->type == FOBJ_STR, "Wrong type");
     return fstr_concatenate(f, op1, op2);
 }
 
@@ -89,7 +89,7 @@ fobj_t *fstr_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 fobj_t *fstr_sub(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
     ASSERT(op1->type == FOBJ_STR);
-    fassert(f, op2->type == FOBJ_STR, 1, "Wrong type");
+    FASSERT(op2->type == FOBJ_STR, "Wrong type");
     return fstr_compare(f, op1, op2);
 }
 
@@ -124,7 +124,7 @@ fobj_t *fstr_fetch(fenv_t *f, fobj_t *addr, fobj_t *index)
 
 int fstr_len(fenv_t *f, fobj_t *str)
 {
-    fassert(f, str->type == FOBJ_STR, 1, "STRING required");
+    FASSERT(str->type == FOBJ_STR, "STRING required");
     return str->u.str.len;
 }
 

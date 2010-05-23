@@ -120,7 +120,7 @@ void fparse_do_token(fenv_t *f, fobj_t *token)
     } else {
         fnumber_t n = 0;
         int r = fparse_token_to_number(f, token, &n);
-        fassert(f, r, 1, "Word %s not found in the dictionary", token->u.str.buf);
+        FASSERT(r, "Word %s not found in the dictionary", token->u.str.buf);
         fobj_t *num = fnum_new(f, n);
         extern void fcode_push(void *, void *);
         fcode_push(f, num);

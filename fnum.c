@@ -34,13 +34,13 @@ int fnum_cmp(fenv_t *f, fobj_t *a, fobj_t *b)
 fobj_t *fnum_add(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
     ASSERT(op1->type == FOBJ_NUM);
-    fassert(f, op2->type == FOBJ_NUM, 1, "Wrong type");
+    FASSERT(op2->type == FOBJ_NUM, "Wrong type");
     return fnum_new(f, op1->u.num.n + op2->u.num.n);
 }
 
 fobj_t *fnum_sub(fenv_t *f, fobj_t *op1, fobj_t *op2)
 {
     ASSERT(op1->type == FOBJ_NUM);
-    fassert(f, op2->type == FOBJ_NUM, 1, "Wrong type");
+    FASSERT(op2->type == FOBJ_NUM, "Wrong type");
     return fnum_new(f, op1->u.num.n - op2->u.num.n);
 }
