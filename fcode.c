@@ -69,7 +69,7 @@ fnumber_t MKFNAME(pop_num)(fenv_t *f);
 fint_t  MKFNAME(pop_int)(fenv_t *f);
 struct fbody_s {
     fobj_t			*word;
-    fnumber_t		 n;
+    int				 n;
 };
 
 struct fheader_s {
@@ -164,12 +164,6 @@ static void fcode_install(fenv_t *f, fobj_t *word)
 }
     
 
-fobj_t *do_zbranch;
-fobj_t *do_branch;
-fobj_t *do_do;
-fobj_t *do_loop;
-fobj_t *do_exit;
-
 static fobj_t *fcode_lookup_word(fenv_t *f, char *name)
 {
     return ftable_fetch(f, f->words, fstr_new(f, name));
@@ -189,12 +183,6 @@ void fcode_init(fenv_t *f)
     }
 
     f->current_compiling = NULL;
-
-    do_zbranch = fcode_lookup_word(f, "(zbranch)");
-    do_branch  = fcode_lookup_word(f, "(branch)");
-    do_do  = fcode_lookup_word(f, "(do)");
-    do_loop  = fcode_lookup_word(f, "(loop)");
-    do_exit = fcode_lookup_word(f, "(exit)");
 }
 
 void fcode_new_var(fenv_t *f, fobj_t *name, fobj_t *value)
@@ -600,7 +588,7 @@ static void forth_back_branch(fenv_t *f, fobj_t *branch_word, int target_offset)
 
 FWORD_IMM(if)
 {
-    forth_mark(f, do_zbranch, FSTATE_IF);
+    forth_mark(f, fcode_lookup_word(f, "(zbranch)"), FSTATE_IF);
 }
 
 FWORD_IMM(else)
@@ -609,7 +597,7 @@ FWORD_IMM(else)
                  1,
                  "else must follow an if");
     fobj_t *if_mark = POP;
-    forth_mark(f, do_branch, FSTATE_IF);
+    forth_mark(f, fcode_lookup_word(f, "(branch)"), FSTATE_IF);
     PUSH(if_mark);
     forth_resolve(f, FSTATE_IF);
 }
@@ -660,7 +648,7 @@ FWORD(i)
 FWORD_IMM(do)
 {
     forth_mark(f, NULL, FSTATE_DO);
-    forth_compile_word(f, do_do, 0);
+    forth_compile_word(f, fcode_lookup_word(f, "(do)"), 0);
 }
 
 FWORD_IMM(loop)
@@ -671,7 +659,7 @@ FWORD_IMM(loop)
 
     fobj_t *do_mark = forth_state_pop(f);
 
-    forth_back_branch(f, do_loop, do_mark->u.state.offset);
+    forth_back_branch(f, fcode_lookup_word(f, "(loop)"), do_mark->u.state.offset);
 }
     
 FWORD_IMM(begin)
@@ -682,7 +670,7 @@ FWORD_IMM(begin)
 
 FWORD_IMM(while)
 {
-    forth_mark(f, do_zbranch, FSTATE_WHILE);
+    forth_mark(f, fcode_lookup_word(f, "(zbranch)"), FSTATE_WHILE);
 }
 
 FWORD_IMM(repeat)
@@ -692,7 +680,7 @@ FWORD_IMM(repeat)
                  "repeat must follow a while");
     SWAP;  /* begin_mark  while_mark --> while_mark  begin_mark */
     fobj_t *begin_mark = POP;
-    forth_back_branch(f, do_branch, begin_mark->u.state.offset);
+    forth_back_branch(f, fcode_lookup_word(f, "(branch)"), begin_mark->u.state.offset);
     forth_resolve(f, FSTATE_WHILE);
 }
 
@@ -743,7 +731,7 @@ FWORD_IMM2(semicolon, ";")
             "Semicolon (;) can only be used used to terminate a colon definition");
 
     // Compile an exit word
-    forth_compile_word(f, do_exit, 0);
+    forth_compile_word(f, fcode_lookup_word(f, "(exit)"), 0);
 
     ftable_store(f, f->new_words, CURRENT->name, f->current_compiling);
     f->current_compiling = POP;
@@ -790,7 +778,7 @@ void fcode_compile_string(fenv_t *f, const char *string)
         if (!r) break;
         fcode_handle_token(f, token);
     } while (1);
-    forth_compile_word(f, do_exit, 0);
+    forth_compile_word(f, fcode_lookup_word(f, "(exit)"), 0);
 
     /*
      * Merge f->new_words into f->words.  This algorithm should probably be

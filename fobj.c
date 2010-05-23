@@ -269,14 +269,8 @@ void fobj_hold_n(fenv_t *f, int n, ...)
     va_end(ap);
 }
 
-int fobj_max_hold_sp = 0;
-
 void fobj_hold_clear(fenv_t *f)
 {
-    if (f->hold_stack->u.stack.sp > fobj_max_hold_sp) {
-        fobj_max_hold_sp = f->hold_stack->u.stack.sp;
-    }
-
     f->hold_stack->u.stack.sp = 0;
 }
 
